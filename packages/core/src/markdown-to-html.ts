@@ -226,13 +226,13 @@ function createMarkdownRenderer(
 			? `hljs language-${escapeHtml(language)} line-numbers`
 			: `hljs language-${escapeHtml(language)}`;
 		const titleHtml = info.title ? `<div class="listing-title">${escapeHtml(info.title)}</div>\n` : "";
-		const codeHtml = info.lineNumbers ? wrapCodeLines(highlighted) : highlighted;
+		const codeHtml = wrapCodeLines(highlighted);
 
 		return `
-    <div class="listingblock" data-lang="${escapeHtml(language)}">
-    ${titleHtml}<div class="listing-content"><pre class="highlight"><code class="${codeClass}">${codeHtml}</code></pre></div>
-    </div>
-    `;
+			<div class="listingblock" data-lang="${escapeHtml(language)}">
+			${titleHtml}<div class="listing-content"><pre class="highlight"><code class="${codeClass}">${codeHtml}</code></pre></div>
+			</div>
+			`;
 	};
 
 	md.core.ruler.push("devspec_headings", (state) => {

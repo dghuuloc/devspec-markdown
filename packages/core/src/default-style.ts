@@ -208,9 +208,37 @@ body {
   margin: 24px 0;
 }
 
-.markdown-body .section-number {
-  color: inherit;
-  font-weight: inherit;
+/* ==========================================================================
+   Long text / PDF overflow protection
+   ========================================================================== */
+
+.markdown-body,
+.markdown-body * {
+  box-sizing: border-box;
+}
+
+.markdown-body {
+  width: 100%;
+  max-width: 980px;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+}
+
+.markdown-body p,
+.markdown-body li,
+.markdown-body td,
+.markdown-body th,
+.markdown-body blockquote,
+.markdown-body dd,
+.markdown-body dt {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.markdown-body a {
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 /* ==========================================================================
@@ -309,12 +337,29 @@ body {
   font-size: 12px;
 }
 
+.markdown-body .toc-list li a,
+.markdown-body .toc-entry-title {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.markdown-body .toc-entry-title {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.markdown-body .toc-entry-title::after {
+  min-width: 18px;
+}
+
 /* ==========================================================================
    Tables
    ========================================================================== */
 
 .markdown-body table {
   width: 100%;
+  max-width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   margin: 12px 0 24px 0;
   border: 1px solid var(--line);
@@ -331,6 +376,8 @@ body {
   text-align: left;
   border: 1px solid #cbd5e1;
   padding: 8px 10px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .markdown-body tbody td,
@@ -339,6 +386,8 @@ body {
   padding: 8px 10px;
   vertical-align: top;
   color: #1f2937;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .markdown-body tbody tr:nth-child(even) td {
@@ -412,7 +461,12 @@ body {
   background: #f1f5f9;
   color: #172033;
   font-size: 0.9em;
-  white-space: nowrap;
+
+  /* Important for long paths, URLs, class names, method names */
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  max-width: 100%;
 }
 
 .markdown-body .listingblock {
@@ -487,19 +541,25 @@ body {
   line-height: inherit;
 }
 
-.markdown-body .line-numbers {
+.markdown-body .code-line {
+  display: block;
+  min-height: 1.45em;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+/* Only show line numbers when code has the line-numbers class. */
+.markdown-body pre code.line-numbers {
   counter-reset: code-line;
 }
 
-.markdown-body .code-line {
-  display: block;
-  min-height: 1.52em;
+.markdown-body pre code.line-numbers .code-line {
   counter-increment: code-line;
   padding-left: 3.2em;
   position: relative;
 }
 
-.markdown-body .code-line::before {
+.markdown-body pre code.line-numbers .code-line::before {
   content: counter(code-line);
   position: absolute;
   left: 0;
@@ -734,12 +794,37 @@ body {
   }
 
   .markdown-body {
+    width: 100% !important;
     max-width: none !important;
     margin: 0 !important;
     padding: 0 !important;
     box-shadow: none !important;
     border: 0 !important;
     border-radius: 0 !important;
+  }
+
+  .markdown-body,
+  .markdown-body * {
+    box-sizing: border-box !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .markdown-body p,
+  .markdown-body li,
+  .markdown-body td,
+  .markdown-body th,
+  .markdown-body blockquote,
+  .markdown-body dd,
+  .markdown-body dt,
+  .markdown-body a,
+  .markdown-body :not(pre) > code {
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+  }
+
+  .markdown-body :not(pre) > code {
+    white-space: normal !important;
   }
 
   .markdown-body .toc-list li a::after {
@@ -807,15 +892,55 @@ body {
     margin: 10px 0 16px 0 !important;
     border-radius: 1px !important;
     box-shadow: none !important;
+    box-decoration-break: clone !important;
+    -webkit-box-decoration-break: clone !important;
   }
 
   .markdown-body pre.highlight,
   .markdown-body pre {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 100% !important;
     font-size: 10.5px !important;
     line-height: 1.45 !important;
     padding: 10px 12px !important;
+
+    /* PDF must wrap long code lines instead of clipping horizontally */
     white-space: pre-wrap !important;
     overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+  }
+
+  .markdown-body pre code,
+  .markdown-body pre code.hljs {
+    max-width: 100% !important;
+    white-space: inherit !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+  }
+
+  .markdown-body .listingblock::before {
+    max-width: 72px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .markdown-body .listingblock,
+  .markdown-body .listing-content {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  
+  .markdown-body .code-line {
+    display: block !important;
+    max-width: 100% !important;
+    white-space: inherit !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
   }
 
   .markdown-body .page-break {

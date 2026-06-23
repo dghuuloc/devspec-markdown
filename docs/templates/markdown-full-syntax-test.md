@@ -11,6 +11,8 @@ It includes common Markdown syntax, GitHub-style extensions, code blocks with sy
 ---
 This work will be display inside preview when we typing text. This is **good for our codebase**, please let me know if you want any supports and enhance current our features.
 
+Hello Lam-san
+
 ## Paragraphs and line breaks
 
 This is a normal paragraph. Markdown keeps text readable in source form and renders it as a paragraph in the final PDF.
