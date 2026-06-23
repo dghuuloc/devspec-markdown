@@ -1,7 +1,10 @@
 import * as vscode from "vscode";
-import * as fs from "node:fs";
-import * as path from "node:path";
-import { pathToFileURL } from "node:url";
+import * as fs from "fs";
+import * as path from "path";
+import * as os from "os";
+import * as nodeProcess from "process";
+import { spawnSync } from "child_process";
+import { pathToFileURL } from "url";
 
 import {
 	renderMarkdownToHtml,
@@ -96,29 +99,15 @@ export function activate(context: vscode.ExtensionContext): void {
 			}
 
 			const config = vscode.workspace.getConfiguration("devspecMarkdown");
-			let browserPath = config.get<string>("browserPath") ?? "";
+			const browserPath = findBrowserPath(config);
 
 			if (!browserPath) {
-				browserPath = findBrowserPath() ?? "";
-			}
+				const remoteName = vscode.env.remoteName;
+				const message = remoteName
+					? `DevSpec PDF export could not find Chrome, Edge, Brave, or Chromium in the ${remoteName} environment. If you are using a Dev Container, install Chromium inside the container and try again.`
+					: "DevSpec PDF export could not find Chrome, Edge, Brave, or Chromium. Please install one of these browsers and try again.";
 
-			if (!browserPath || !fs.existsSync(browserPath)) {
-				const input = await vscode.window.showInputBox({
-					title: "Chrome / Edge executable path required",
-					prompt: "Enter Chrome or Edge executable path for PDF export.",
-					placeHolder: "C:/Program Files/Google/Chrome/Application/chrome.exe"
-				});
-
-				if (!input) {
-					vscode.window.showWarningMessage("PDF export cancelled. Browser path is required.");
-					return;
-				}
-
-				browserPath = input;
-			}
-
-			if (!fs.existsSync(browserPath)) {
-				vscode.window.showErrorMessage(`Browser executable not found: ${browserPath}`);
+				vscode.window.showErrorMessage(message);
 				return;
 			}
 
@@ -352,40 +341,241 @@ function resolveDiagramSourceDir(
 	return path.resolve(projectRoot, rawDiagramSourceDir);
 }
 
-function findBrowserPath(): string | undefined {
+function findBrowserPath(config?: vscode.WorkspaceConfiguration): string | undefined {
+	const configuredPath = config?.get<string>("browserPath")?.trim();
+	const configuredBrowser = existingFile(configuredPath);
+
+	if (configuredBrowser) {
+		return configuredBrowser;
+	}
+
+	const envBrowser =
+		existingFile(nodeProcess.env.DEVSPEC_BROWSER_PATH) ??
+		existingFile(nodeProcess.env.PUPPETEER_EXECUTABLE_PATH) ??
+		existingFile(nodeProcess.env.CHROME_PATH) ??
+		existingFile(nodeProcess.env.EDGE_PATH);
+
+	if (envBrowser) {
+		return envBrowser;
+	}
+
+	for (const candidate of getKnownBrowserPaths()) {
+		const browser = existingFile(candidate);
+
+		if (browser) {
+			return browser;
+		}
+	}
+
+	if (nodeProcess.platform === "win32") {
+		const registryBrowser = findBrowserFromWindowsRegistry();
+
+		if (registryBrowser) {
+			return registryBrowser;
+		}
+	}
+
+	return findBrowserFromPath();
+}
+
+function getKnownBrowserPaths(): string[] {
 	const candidates: string[] = [];
 
-	if (process.platform === "win32") {
+	if (nodeProcess.platform === "win32") {
+		const programFiles = nodeProcess.env.ProgramFiles ?? "C:\\Program Files";
+		const programFilesX86 = nodeProcess.env["ProgramFiles(x86)"] ?? "C:\\Program Files (x86)";
+		const programW6432 = nodeProcess.env.ProgramW6432 ?? programFiles;
+		const localAppData =
+			nodeProcess.env.LOCALAPPDATA ?? path.join(os.homedir(), "AppData", "Local");
+
 		candidates.push(
-			"C:/Program Files/Google/Chrome/Application/chrome.exe",
-			"C:/Program Files (x86)/Google/Chrome/Application/chrome.exe",
-			"C:/Program Files/Microsoft/Edge/Application/msedge.exe",
-			"C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe"
+			path.join(programFiles, "Microsoft", "Edge", "Application", "msedge.exe"),
+			path.join(programFilesX86, "Microsoft", "Edge", "Application", "msedge.exe"),
+			path.join(programW6432, "Microsoft", "Edge", "Application", "msedge.exe"),
+			path.join(localAppData, "Microsoft", "Edge", "Application", "msedge.exe"),
+
+			path.join(programFiles, "Google", "Chrome", "Application", "chrome.exe"),
+			path.join(programFilesX86, "Google", "Chrome", "Application", "chrome.exe"),
+			path.join(programW6432, "Google", "Chrome", "Application", "chrome.exe"),
+			path.join(localAppData, "Google", "Chrome", "Application", "chrome.exe"),
+
+			path.join(programFiles, "BraveSoftware", "Brave-Browser", "Application", "brave.exe"),
+			path.join(programFilesX86, "BraveSoftware", "Brave-Browser", "Application", "brave.exe"),
+			path.join(programW6432, "BraveSoftware", "Brave-Browser", "Application", "brave.exe"),
+			path.join(localAppData, "BraveSoftware", "Brave-Browser", "Application", "brave.exe")
 		);
 	}
 
-	if (process.platform === "darwin") {
+	if (nodeProcess.platform === "darwin") {
 		candidates.push(
+			"/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
 			"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-			"/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge"
+			"/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
+			path.join(os.homedir(), "Applications", "Microsoft Edge.app", "Contents", "MacOS", "Microsoft Edge"),
+			path.join(os.homedir(), "Applications", "Google Chrome.app", "Contents", "MacOS", "Google Chrome"),
+			path.join(os.homedir(), "Applications", "Brave Browser.app", "Contents", "MacOS", "Brave Browser")
 		);
 	}
 
-	if (process.platform === "linux") {
+	if (nodeProcess.platform === "linux") {
 		candidates.push(
+			"/usr/bin/microsoft-edge",
+			"/usr/bin/microsoft-edge-stable",
 			"/usr/bin/google-chrome",
 			"/usr/bin/google-chrome-stable",
 			"/usr/bin/chromium",
 			"/usr/bin/chromium-browser",
-			"/usr/bin/microsoft-edge"
+			"/usr/bin/brave-browser",
+			"/snap/bin/chromium"
 		);
 	}
 
-	for (const candidate of candidates) {
-		if (fs.existsSync(candidate)) {
-			return candidate;
+	return candidates;
+}
+
+function findBrowserFromWindowsRegistry(): string | undefined {
+	const appNames = ["msedge.exe", "chrome.exe", "brave.exe"];
+	const registryRoots = [
+		"HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\App Paths",
+		"HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\App Paths",
+		"HKLM\\Software\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\App Paths"
+	];
+
+	for (const appName of appNames) {
+		for (const registryRoot of registryRoots) {
+			const result = spawnSync(
+				"reg.exe",
+				["query", `${registryRoot}\\${appName}`, "/ve"],
+				{
+					encoding: "utf8",
+					windowsHide: true,
+					stdio: ["ignore", "pipe", "ignore"]
+				}
+			);
+
+			if (result.error || result.status !== 0 || !result.stdout) {
+				continue;
+			}
+
+			const browserPath = parseDefaultRegistryValue(result.stdout);
+			const browser = existingFile(browserPath);
+
+			if (browser) {
+				return browser;
+			}
 		}
 	}
 
 	return undefined;
+}
+
+function parseDefaultRegistryValue(output: string): string | undefined {
+	for (const line of output.split(/\r?\n/)) {
+		const match = line.match(/^\s*\(Default\)\s+REG_SZ\s+(.+?)\s*$/i);
+
+		if (match) {
+			return match[1].trim();
+		}
+	}
+
+	return undefined;
+}
+
+function findBrowserFromPath(): string | undefined {
+	const commands =
+		nodeProcess.platform === "win32"
+			? [
+				"msedge.exe",
+				"msedge",
+				"chrome.exe",
+				"chrome",
+				"brave.exe",
+				"brave"
+			]
+			: [
+				"microsoft-edge",
+				"microsoft-edge-stable",
+				"google-chrome",
+				"google-chrome-stable",
+				"chromium",
+				"chromium-browser",
+				"brave-browser"
+			];
+
+	for (const command of commands) {
+		const found = findCommand(command);
+		const browser = existingFile(found);
+
+		if (browser) {
+			return browser;
+		}
+	}
+
+	return undefined;
+}
+
+function findCommand(command: string): string | undefined {
+	const lookupCommand = nodeProcess.platform === "win32" ? "where.exe" : "which";
+
+	const result = spawnSync(lookupCommand, [command], {
+		encoding: "utf8",
+		windowsHide: true,
+		stdio: ["ignore", "pipe", "ignore"]
+	});
+
+	if (result.error || result.status !== 0) {
+		return undefined;
+	}
+
+	const stdout = result.stdout?.toString() ?? "";
+
+	return stdout
+		.split(/\r?\n/)
+		.map((line: string) => line.trim())
+		.find(Boolean);
+}
+
+function existingFile(value?: string): string | undefined {
+	if (!value) {
+		return undefined;
+	}
+
+	const expandedPath = expandHomePath(stripWrappingQuotes(value));
+
+	try {
+		const stat = fs.statSync(expandedPath);
+
+		if (stat.isFile()) {
+			return expandedPath;
+		}
+	} catch {
+		return undefined;
+	}
+
+	return undefined;
+}
+
+function stripWrappingQuotes(value: string): string {
+	const trimmed = value.trim();
+
+	if (
+		(trimmed.startsWith("\"") && trimmed.endsWith("\"")) ||
+		(trimmed.startsWith("'") && trimmed.endsWith("'"))
+	) {
+		return trimmed.slice(1, -1);
+	}
+
+	return trimmed;
+}
+
+function expandHomePath(value: string): string {
+	if (value === "~") {
+		return os.homedir();
+	}
+
+	if (value.startsWith("~/") || value.startsWith("~\\")) {
+		return path.join(os.homedir(), value.slice(2));
+	}
+
+	return value;
 }

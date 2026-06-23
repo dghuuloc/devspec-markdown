@@ -1,8 +1,8 @@
 {
   "name": "devspec-markdown-vscode",
   "displayName": "DevSpec Markdown",
-  "description": "VS Code custom live preview for DevSpec Markdown with PlantUML, TOC, section numbering, alerts, and PDF export.",
-  "version": "0.0.1",
+  "description": "VS Code live preview for DevSpec Markdown with PlantUML, TOC, and PDF export.",
+  "version": "0.0.2",
   "publisher": "dghuuloc",
   "engines": {
     "vscode": "^1.96.0"
@@ -147,7 +147,7 @@
         "devspecMarkdown.browserPath": {
           "type": "string",
           "default": "",
-          "description": "Path to Chrome or Edge executable for PDF export. If empty, the extension tries common Chrome/Edge paths."
+          "description": "Optional browser executable path for PDF export. If empty, the extension automatically detects Edge, Chrome, Brave, or Chromium from common install paths and PATH."
         }
       }
     },
