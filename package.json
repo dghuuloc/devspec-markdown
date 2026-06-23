@@ -1,0 +1,29 @@
+{
+  "name": "devspec-markdown",
+  "version": "0.0.1",
+  "private": true,
+  "description": "DevSpec Markdown monorepo: reusable core renderer, CLI, and VS Code extension.",
+  "workspaces": [
+    "packages/core",
+    "packages/cli",
+    "packages/vscode-extension"
+  ],
+  "scripts": {
+    "clean": "node scripts/clean.mjs",
+    "download:plantuml": "node scripts/download-plantuml.mjs",
+    "postinstall": "node scripts/download-plantuml.mjs",
+    "compile": "npm run compile -w @devspec-markdown/core && npm run compile -w @devspec-markdown/cli && npm run compile -w devspec-markdown-vscode",
+    "watch:core": "npm run watch -w @devspec-markdown/core",
+    "watch:extension": "npm run watch -w devspec-markdown-vscode",
+    "sample:html": "npm run devspec -w @devspec-markdown/cli -- build --input docs/templates/sample-devspec.md --output build/sample-devspec.html",
+    "sample:pdf": "npm run devspec -w @devspec-markdown/cli -- pdf --input build/sample-devspec.html --output build/sample-devspec.pdf --browser \"C:/Program Files/Google/Chrome/Application/chrome.exe\"",
+    "prepare:vsix": "npm run compile && node scripts/prepare-vsix.mjs",
+    "package:vsix": "npm run prepare:vsix && npm run package -w devspec-markdown-vscode"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "pagedjs": "^0.4.3"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "name": "@devspec-markdown/cli",
+  "version": "0.0.1",
+  "description": "CLI wrapper for DevSpec Markdown core.",
+  "type": "commonjs",
+  "main": "dist/devspec-cli.js",
+  "types": "dist/devspec-cli.d.ts",
+  "bin": {
+    "devspec": "dist/devspec-cli.js"
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "devspec": "node dist/devspec-cli.js"
+  },
+  "dependencies": {
+    "@devspec-markdown/core": "file:../core"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10"
+  }
+}

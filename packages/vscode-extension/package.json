@@ -1,0 +1,183 @@
+{
+  "name": "devspec-markdown-vscode",
+  "displayName": "DevSpec Markdown",
+  "description": "VS Code custom live preview for DevSpec Markdown with PlantUML, TOC, section numbering, alerts, and PDF export.",
+  "version": "0.0.1",
+  "publisher": "dghuuloc",
+  "engines": {
+    "vscode": "^1.96.0"
+  },
+  "categories": [
+    "Other",
+    "Visualization"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dghuuloc/devspec-markdown.git"
+  },
+  "files": [
+    "out",
+    "node_modules/@devspec-markdown/core/dist",
+    "node_modules/@devspec-markdown/core/vendor",
+    "node_modules/@devspec-markdown/core/package.json",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "package.json"
+  ],
+  "activationEvents": [
+    "onCommand:devspecMarkdown.openPreview",
+    "onCommand:devspecMarkdown.exportHtml",
+    "onCommand:devspecMarkdown.exportPdf"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "devspecMarkdown.openPreview",
+        "title": "DevSpec: Open Preview"
+      },
+      {
+        "command": "devspecMarkdown.exportHtml",
+        "title": "DevSpec: Export Current Markdown to HTML"
+      },
+      {
+        "command": "devspecMarkdown.exportPdf",
+        "title": "DevSpec: Export Current Markdown to PDF"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "devspecMarkdown.openPreview",
+          "when": "editorLangId == markdown",
+          "group": "navigation@1"
+        },
+        {
+          "command": "devspecMarkdown.exportHtml",
+          "when": "editorLangId == markdown",
+          "group": "navigation@2"
+        },
+        {
+          "command": "devspecMarkdown.exportPdf",
+          "when": "editorLangId == markdown",
+          "group": "navigation@3"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "devspecMarkdown.openPreview",
+          "when": "editorLangId == markdown",
+          "group": "navigation@1"
+        },
+        {
+          "command": "devspecMarkdown.exportHtml",
+          "when": "editorLangId == markdown",
+          "group": "navigation@2"
+        },
+        {
+          "command": "devspecMarkdown.exportPdf",
+          "when": "editorLangId == markdown",
+          "group": "navigation@3"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "devspecMarkdown.openPreview",
+          "when": "true"
+        },
+        {
+          "command": "devspecMarkdown.exportHtml",
+          "when": "true"
+        },
+        {
+          "command": "devspecMarkdown.exportPdf",
+          "when": "true"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "DevSpec Markdown",
+      "properties": {
+        "devspecMarkdown.diagramSourceDir": {
+          "type": "string",
+          "default": "docs/diagrams/src",
+          "description": "Folder for separated PlantUML .puml files. Relative paths are resolved from the workspace root."
+        },
+        "devspecMarkdown.plantumlJarPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to plantuml.jar. If empty, the extension uses packages/core/vendor/plantuml.jar when available."
+        },
+        "devspecMarkdown.plantumlSecurityProfile": {
+          "type": "string",
+          "default": "SECURE",
+          "enum": [
+            "SECURE",
+            "UNSECURE"
+          ],
+          "description": "PlantUML security profile. Use UNSECURE only when you need remote includes."
+        },
+        "devspecMarkdown.previewDebounceMs": {
+          "type": "number",
+          "default": 700,
+          "description": "Delay before refreshing the custom live preview while typing. Larger values improve performance for large documents."
+        },
+        "devspecMarkdown.sectionNumbering": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically number headings."
+        },
+        "devspecMarkdown.sectionNumberMinLevel": {
+          "type": "number",
+          "default": 2,
+          "description": "Minimum heading level for automatic section numbering."
+        },
+        "devspecMarkdown.sectionNumberMaxLevel": {
+          "type": "number",
+          "default": 4,
+          "description": "Maximum heading level for automatic section numbering."
+        },
+        "devspecMarkdown.stripExistingSectionNumbers": {
+          "type": "boolean",
+          "default": true,
+          "description": "Remove existing manual section numbers before generating automatic numbers."
+        },
+        "devspecMarkdown.browserPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to Chrome or Edge executable for PDF export. If empty, the extension tries common Chrome/Edge paths."
+        }
+      }
+    },
+    "keybindings": [
+      {
+        "command": "devspecMarkdown.exportPdf",
+        "key": "ctrl+alt+p",
+        "mac": "cmd+alt+p",
+        "when": "editorLangId == markdown"
+      },
+      {
+        "command": "devspecMarkdown.openPreview",
+        "key": "ctrl+alt+v",
+        "mac": "cmd+alt+v",
+        "when": "editorLangId == markdown"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package"
+  },
+  "dependencies": {
+    "@devspec-markdown/core": "file:../core"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "@types/vscode": "^1.96.0",
+    "@vscode/vsce": "^3.2.1",
+    "typescript": "^5.7.3"
+  }
+}

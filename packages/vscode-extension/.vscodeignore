@@ -1,0 +1,7 @@
+src/**
+.vscode/**
+tsconfig.json
+*.map
+node_modules/@devspec-markdown/core/src/**
+node_modules/@devspec-markdown/core/tsconfig.json
+node_modules/@devspec-markdown/core/*.tsbuildinfo

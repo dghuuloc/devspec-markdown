@@ -1,0 +1,14 @@
+@startuml
+skinparam componentStyle rectangle
+actor User
+component "VS Code Extension" as Extension
+component "@devspec-markdown/core" as Core
+component "PlantUML Renderer" as PlantUML
+
+User --> Extension : Open Preview
+Extension --> Core : markdown + options
+Core --> PlantUML : diagram source
+PlantUML --> Core : svg
+Core --> Extension : html
+Extension --> User : webview
+@enduml
