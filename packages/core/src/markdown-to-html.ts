@@ -490,14 +490,20 @@ function highlightCode(source: string, language: string): string {
 	}
 }
 
-function wrapCodeLines(html: string): string {
-	const lines = html.split(/\n/);
+function wrapCodeLines(code: string): string {
+	const normalizedCode = code
+		.replace(/\r\n/g, "\n")
+		.replace(/\r/g, "\n")
+		.replace(/\n+$/g, "");
 
-	if (lines[lines.length - 1] === "") {
-		lines.pop();
+	if (!normalizedCode) {
+		return `<span class="code-line">&nbsp;</span>`;
 	}
 
-	return lines.map((line) => `<span class="code-line">${line || " "}</span>`).join("\n");
+	return normalizedCode
+		.split("\n")
+		.map((line) => `<span class="code-line">${line || "&nbsp;"}</span>`)
+		.join("");
 }
 
 function makeUniqueId(baseId: string, usedIds: Map<string, number>): string {

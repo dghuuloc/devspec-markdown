@@ -526,7 +526,7 @@ body {
   tab-size: 4;
   font-family: "Cascadia Code", "JetBrains Mono", Consolas, Monaco, "Courier New", monospace;
   font-size: 12px;
-  line-height: 1.62;
+  line-height: 1.38;
 }
 
 .markdown-body pre code,
@@ -543,7 +543,7 @@ body {
 
 .markdown-body .code-line {
   display: block;
-  min-height: 1.45em;
+  min-height: 1.35em;
   break-inside: avoid;
   page-break-inside: avoid;
 }
@@ -902,7 +902,7 @@ body {
     width: 100% !important;
     max-width: 100% !important;
     font-size: 10.5px !important;
-    line-height: 1.45 !important;
+    line-height: 1.32 !important;
     padding: 10px 12px !important;
 
     /* PDF must wrap long code lines instead of clipping horizontally */
