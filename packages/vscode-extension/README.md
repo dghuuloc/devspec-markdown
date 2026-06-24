@@ -1,10 +1,10 @@
 # DevSpec Markdown
 
-**DevSpec Markdown** is a VS Code extension for writing professional technical documentation in Markdown.
+**DevSpec Markdown** is a Visual Studio Code extension for writing professional technical documentation in Markdown.
 
 It provides a dedicated DevSpec preview, table of contents generation, section numbering, PlantUML diagram rendering, syntax-highlighted code blocks, HTML export, and polished PDF export with headers, footers, and page numbers.
 
-This extension is designed for engineering documents such as development specifications, architecture documents, API design notes, implementation summaries, runbooks, and internal technical reports.
+DevSpec Markdown is designed for engineering documents such as development specifications, architecture documents, API design notes, implementation summaries, runbooks, and internal technical reports.
 
 ## Features
 
@@ -19,7 +19,7 @@ This extension is designed for engineering documents such as development specifi
 * Syntax-highlighted code blocks
 * GitHub-style Markdown alerts
 * DevSpec-style document attributes
-* Shared document configuration through `include::...[]`
+* Shared document configuration support
 * Long text, long file path, and long code-line handling for PDF export
 * Works with normal `.md` Markdown files
 
@@ -33,11 +33,10 @@ Open a Markdown file, then run one of these commands from the VS Code Command Pa
 | `DevSpec: Export Current Markdown to HTML` | Export the current Markdown file to `.devspec.html`         |
 | `DevSpec: Export Current Markdown to PDF`  | Export the current Markdown file to `.devspec.pdf`          |
 
-## Quick Start
-
+## Quick Star
 Create a Markdown file:
 
-````md
+````markdown
 # Backend Implementation Summary
 
 :toc:
@@ -72,27 +71,32 @@ Service -> DB: Create task
 Service -> Worker: Dispatch task
 Worker -> DB: Update status
 @enduml
-````
+```
 
 ## Implementation
+
 Add implementation details here.
+````
 
 Then run:
+
 ```text
 DevSpec: Open Preview
 ```
 
 To export PDF:
+
 ```text
 DevSpec: Export Current Markdown to PDF
 ```
 
 ## Document Attributes
+
 DevSpec Markdown supports document attributes inside Markdown files.
 
 Place attributes near the top of your document.
 
-```md
+```markdown
 :toc:
 :toc-title: Table of Contents
 :toclevels: 4
@@ -117,7 +121,7 @@ Place attributes near the top of your document.
 
 Enable table of contents:
 
-```md
+```markdown
 :toc:
 :toc-title: Table of Contents
 :toclevels: 4
@@ -127,7 +131,7 @@ The table of contents is generated from Markdown headings.
 
 Example:
 
-```md
+```markdown
 # My Document
 
 :toc:
@@ -144,28 +148,24 @@ Example:
 ```
 
 ## Section Numbering
-
 Enable automatic section numbering:
 
-```md
+```markdown
 :sectnums:
 :sectnumlevels: 4
 ```
 
 Disable section numbering:
-
-```md
+```markdown
 :sectnums: false
 ```
 
 or:
-
-```md
+```markdown
 :sectnums!:
 ```
 
 Example output:
-
 ```text
 1. Overview
 2. Design
@@ -176,8 +176,7 @@ Example output:
 ## PDF Header and Footer
 
 PDF export supports custom headers and footers.
-
-```md
+```markdown
 :pdf-title: My Document
 :pdf-owner: Engineering Team
 :pdf-version: v1.0
@@ -204,7 +203,7 @@ Supported placeholders:
 
 ## Shared Configuration Files
 
-You can keep common document attributes in a shared Markdown config file.
+You can keep common document attributes in a shared Markdown configuration file and include it from multiple documents.
 
 Recommended structure:
 
@@ -218,7 +217,7 @@ docs/
 
 Example `docs/config/devspec-properties.md`:
 
-```md
+```markdown
 :toc:
 :toc-title: Table of Contents
 :toclevels: 4
@@ -233,25 +232,11 @@ Example `docs/config/devspec-properties.md`:
 :pdf-footer-right: Page {page} / {totalPages}
 ```
 
-Example `docs/templates/design-document.md`:
-
-```md
-# Design Document
-
-include::../config/devspec-properties.md[]
-
-## Overview
-
-Document content starts here.
-```
-
-The include path is resolved relative to the Markdown file that contains the `include::...[]` directive.
-
 ## PlantUML Support
 
 DevSpec Markdown supports PlantUML code fences.
 
-````md
+````markdown
 ```plantuml
 @startuml
 actor User
@@ -272,7 +257,7 @@ PlantUML diagrams are rendered in preview, HTML export, and PDF export.
 
 DevSpec Markdown supports syntax-highlighted code blocks.
 
-````md
+````markdown
 ```java
 public class Example {
     public static void main(String[] args) {
@@ -294,7 +279,7 @@ Supported behavior:
 
 GitHub-style Markdown alerts are supported.
 
-```md
+```markdown
 > [!NOTE]
 > Useful information for readers.
 
@@ -312,15 +297,18 @@ GitHub-style Markdown alerts are supported.
 ```
 
 ## PDF Export
+
 PDF export uses a local Chromium-based browser through Puppeteer.
 
 The extension automatically tries to detect:
+
 * Microsoft Edge
 * Google Chrome
 * Brave Browser
 * Chromium
 
-The browser detection checks:
+Browser detection checks:
+
 * VS Code setting override
 * Environment variables
 * Common Windows, macOS, and Linux install paths
@@ -330,9 +318,11 @@ The browser detection checks:
 Most users do not need to configure a browser path manually.
 
 ### Optional Browser Override
+
 If automatic detection fails, configure the browser executable path manually.
 
 Windows example:
+
 ```json
 {
   "devspecMarkdown.browserPath": "C:/Program Files/Microsoft/Edge/Application/msedge.exe"
@@ -340,6 +330,7 @@ Windows example:
 ```
 
 Linux example:
+
 ```json
 {
   "devspecMarkdown.browserPath": "/usr/bin/chromium"
@@ -347,6 +338,7 @@ Linux example:
 ```
 
 macOS example:
+
 ```json
 {
   "devspecMarkdown.browserPath": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
@@ -354,6 +346,7 @@ macOS example:
 ```
 
 ## Dev Container Usage
+
 When VS Code is opened inside a Dev Container, workspace extensions run inside the container environment.
 
 That means PDF export cannot use Chrome or Edge installed on your Windows or macOS host machine. A browser must be installed inside the container.
@@ -367,6 +360,7 @@ RUN apt-get update \
 ```
 
 Then configure:
+
 ```json
 {
   "devspecMarkdown.browserPath": "/usr/bin/chromium"
@@ -387,19 +381,22 @@ Then configure:
 | `devspecMarkdown.stripExistingSectionNumbers` |              `true` | Remove existing manual section numbers before generating new ones |
 | `devspecMarkdown.browserPath`                 |               empty | Optional browser executable path for PDF export                   |
 
+## Troubleshooting
 ### PDF export cannot find a browser
 
 Install one of the following browsers:
 
-- Microsoft Edge
-- Google Chrome
-- Brave Browser
-- Chromium
+* Microsoft Edge
+* Google Chrome
+* Brave Browser
+* Chromium
 
 If you are using a Dev Container, install Chromium inside the container.
 
 ### PDF export works locally but not in Dev Container
+
 Install Chromium inside the container:
+
 ```dockerfile
 RUN apt-get update \
     && apt-get install -y --no-install-recommends chromium \
@@ -407,6 +404,7 @@ RUN apt-get update \
 ```
 
 Then set:
+
 ```json
 {
   "devspecMarkdown.browserPath": "/usr/bin/chromium"
@@ -414,9 +412,11 @@ Then set:
 ```
 
 ### PlantUML diagrams do not render
+
 Check that Java is installed and PlantUML is available.
 
 You can configure:
+
 ```json
 {
   "devspecMarkdown.plantumlJarPath": "C:/tools/plantuml/plantuml.jar"
@@ -424,7 +424,9 @@ You can configure:
 ```
 
 ### Preview is slow for large documents
+
 Increase the preview debounce time:
+
 ```json
 {
   "devspecMarkdown.previewDebounceMs": 1200
@@ -432,7 +434,9 @@ Increase the preview debounce time:
 ```
 
 ### Section numbers appear twice
+
 Enable existing number cleanup:
+
 ```json
 {
   "devspecMarkdown.stripExistingSectionNumbers": true
@@ -440,19 +444,23 @@ Enable existing number cleanup:
 ```
 
 or disable numbering in the document:
-```md
+
+```markdown
 :sectnums: false
 ```
 
 ### Long file paths overflow in PDF
+
 Use inline code for file paths:
-```md
+
+```markdown
 File: `/workspaces/project/src/main/java/example/VeryLongPath.java`
 ```
 
 DevSpec Markdown applies PDF-friendly wrapping for long paths and inline code.
 
 ## Known Limitations
+
 * PDF export requires an installed Chromium-based browser.
 * Dev Container PDF export requires a browser inside the container.
 * Very large diagrams may be scaled to fit the PDF page width.

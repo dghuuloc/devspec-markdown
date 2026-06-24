@@ -53,18 +53,52 @@
       }
     ],
     "menus": {
-      "commandPalette": [
+      "editor/title": [
         {
           "command": "devspecMarkdown.openPreview",
-          "when": "editorLangId == markdown || resourceExtname == .md"
+          "when": "editorLangId == markdown",
+          "group": "navigation@1"
         },
         {
           "command": "devspecMarkdown.exportHtml",
-          "when": "editorLangId == markdown || resourceExtname == .md"
+          "when": "editorLangId == markdown",
+          "group": "navigation@2"
         },
         {
           "command": "devspecMarkdown.exportPdf",
-          "when": "editorLangId == markdown || resourceExtname == .md"
+          "when": "editorLangId == markdown",
+          "group": "navigation@3"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "devspecMarkdown.openPreview",
+          "when": "editorLangId == markdown",
+          "group": "navigation@1"
+        },
+        {
+          "command": "devspecMarkdown.exportHtml",
+          "when": "editorLangId == markdown",
+          "group": "navigation@2"
+        },
+        {
+          "command": "devspecMarkdown.exportPdf",
+          "when": "editorLangId == markdown",
+          "group": "navigation@3"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "devspecMarkdown.openPreview",
+          "when": "true"
+        },
+        {
+          "command": "devspecMarkdown.exportHtml",
+          "when": "true"
+        },
+        {
+          "command": "devspecMarkdown.exportPdf",
+          "when": "true"
         }
       ]
     },
