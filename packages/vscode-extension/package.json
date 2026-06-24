@@ -2,8 +2,13 @@
   "name": "devspec-markdown-vscode",
   "displayName": "DevSpec Markdown",
   "description": "VS Code live preview for DevSpec Markdown with PlantUML, TOC, and PDF export.",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "publisher": "dghuuloc",
+  "icon": "images/devspec-markdown-icon-256.png",
+  "galleryBanner": {
+    "color": "#0f3fb8",
+    "theme": "dark"
+  },
   "engines": {
     "vscode": "^1.96.0"
   },
@@ -48,52 +53,18 @@
       }
     ],
     "menus": {
-      "editor/title": [
-        {
-          "command": "devspecMarkdown.openPreview",
-          "when": "editorLangId == markdown",
-          "group": "navigation@1"
-        },
-        {
-          "command": "devspecMarkdown.exportHtml",
-          "when": "editorLangId == markdown",
-          "group": "navigation@2"
-        },
-        {
-          "command": "devspecMarkdown.exportPdf",
-          "when": "editorLangId == markdown",
-          "group": "navigation@3"
-        }
-      ],
-      "editor/context": [
-        {
-          "command": "devspecMarkdown.openPreview",
-          "when": "editorLangId == markdown",
-          "group": "navigation@1"
-        },
-        {
-          "command": "devspecMarkdown.exportHtml",
-          "when": "editorLangId == markdown",
-          "group": "navigation@2"
-        },
-        {
-          "command": "devspecMarkdown.exportPdf",
-          "when": "editorLangId == markdown",
-          "group": "navigation@3"
-        }
-      ],
       "commandPalette": [
         {
           "command": "devspecMarkdown.openPreview",
-          "when": "true"
+          "when": "editorLangId == markdown || resourceExtname == .md"
         },
         {
           "command": "devspecMarkdown.exportHtml",
-          "when": "true"
+          "when": "editorLangId == markdown || resourceExtname == .md"
         },
         {
           "command": "devspecMarkdown.exportPdf",
-          "when": "true"
+          "when": "editorLangId == markdown || resourceExtname == .md"
         }
       ]
     },

@@ -138,6 +138,11 @@ fs.writeFileSync(
     "utf8"
 );
 
+copyDirectory(
+    path.join(extensionDir, "images"),
+    path.join(stageDir, "images")
+);
+
 /**
  * Final package.json for vsce.
  *
@@ -155,6 +160,7 @@ const finalPackageJson = {
     files: [
         "out/**",
         "node_modules/**",
+        "images/**",
         "README.md",
         "CHANGELOG.md",
         "LICENSE",

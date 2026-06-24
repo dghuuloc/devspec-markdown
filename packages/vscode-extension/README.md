@@ -459,25 +459,6 @@ DevSpec Markdown applies PDF-friendly wrapping for long paths and inline code.
 * Remote PlantUML includes may require changing the PlantUML security profile.
 * Extremely wide tables may need manual column design for best PDF output.
 
-## Release Notes
-
-### 0.0.2
-
-* Improved browser auto-detection for PDF export
-* Improved PDF export support for another machine installation
-* Improved Dev Container PDF export error message
-* Improved long text and code block wrapping in PDF
-* Improved code block pagination and spacing
-
-### 0.0.1
-
-* Initial DevSpec Markdown preview
-* HTML export
-* PDF export
-* Table of contents
-* Section numbering
-* PlantUML support
-
 ## License
 
 MIT
