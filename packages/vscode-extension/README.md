@@ -1,25 +1,27 @@
-# <p align="center"> DevSpec Markdown Extension for Visual Studio Code </p>
+# <p align="center"> DevSpec Markdown Support for Visual Studio Code </p>
 
 **DevSpec Markdown** is a VS Code extension for writing professional technical documentation in Markdown — with live preview, automatic table of contents, section numbering, PlantUML diagrams, syntax-highlighted code blocks, HTML export, and polished PDF output with custom headers, footers, and page numbers.
 
 Built for engineering documents: development specifications, architecture records, API design notes, implementation summaries, runbooks, and internal technical reports.
 
+:toc:
+
 ---
 ## Features
 
-| | |
-|---|---|
-| 🖥️ **Live preview** | Dedicated DevSpec preview panel with debounced auto-refresh |
-| 📄 **HTML export** | Export to a self-contained `.devspec.html` file |
-| 📑 **PDF export** | Export to a print-ready `.devspec.pdf` with headers, footers, and page numbers |
-| 📋 **Table of contents** | Auto-generated TOC from Markdown headings |
-| 🔢 **Section numbering** | Automatic hierarchical heading numbers (`1.`, `1.1.`, `1.1.1.`) |
-| 🌿 **PlantUML diagrams** | Render embedded `plantuml` fences and separated `.puml` files |
-| 🎨 **Syntax highlighting** | Language-tagged code blocks with highlight.js |
-| 🚨 **Markdown alerts** | GitHub-style `[!NOTE]`, `[!TIP]`, `[!WARNING]`, `[!IMPORTANT]`, `[!CAUTION]` |
+|                           |                                                                                       |
+| ------------------------- | ------------------------------------------------------------------------------------- |
+| 🖥️ **Live preview**        | Dedicated DevSpec preview panel with debounced auto-refresh                           |
+| 📄 **HTML export**         | Export to a self-contained `.devspec.html` file                                       |
+| 📑 **PDF export**          | Export to a print-ready `.devspec.pdf` with headers, footers, and page numbers        |
+| 📋 **Table of contents**   | Auto-generated TOC from Markdown headings                                             |
+| 🔢 **Section numbering**   | Automatic hierarchical heading numbers (`1.`, `1.1.`, `1.1.1.`)                       |
+| 🌿 **PlantUML diagrams**   | Render embedded `plantuml` fences and separated `.puml` files                         |
+| 🎨 **Syntax highlighting** | Language-tagged code blocks with highlight.js                                         |
+| 🚨 **Markdown alerts**     | GitHub-style `[!NOTE]`, `[!TIP]`, `[!WARNING]`, `[!IMPORTANT]`, `[!CAUTION]`          |
 | ⚙️ **Document attributes** | AsciiDoc-style `:key: value` directives for TOC, numbering, PDF metadata, and styling |
-| 📁 **Shared config** | Include a shared attribute file across multiple documents with `include::` |
-| 🎛️ **Custom stylesheet** | Override the built-in CSS with your own stylesheet |
+| 📁 **Shared config**       | Include a shared attribute file across multiple documents with `include::`            |
+| 🎛️ **Custom stylesheet**   | Override the built-in CSS with your own stylesheet                                    |
 
 ---
 ## Requirements
@@ -81,11 +83,11 @@ Add implementation details here.
 ## Commands
 Open a Markdown file, then run any of these commands from the Command Palette (`Ctrl+Shift+P`).
 
-| Command | Shortcut | Description |
-| --- | --- | --- |
-| **DevSpec: Open Preview** | `Ctrl+Alt+V` | Open the live DevSpec preview beside the editor |
-| **DevSpec: Export Current Markdown to HTML** | — | Export to `.devspec.html` next to the source file |
-| **DevSpec: Export Current Markdown to PDF** | `Ctrl+Alt+P` | Export to `.devspec.pdf` via a Save dialog |
+| Command                                      | Shortcut     | Description                                       |
+| -------------------------------------------- | ------------ | ------------------------------------------------- |
+| **DevSpec: Open Preview**                    | `Ctrl+Alt+V` | Open the live DevSpec preview beside the editor   |
+| **DevSpec: Export Current Markdown to HTML** | —            | Export to `.devspec.html` next to the source file |
+| **DevSpec: Export Current Markdown to PDF**  | `Ctrl+Alt+P` | Export to `.devspec.pdf` via a Save dialog        |
 
 Commands are only available when a Markdown file is open in the active editor.
 
@@ -107,11 +109,11 @@ DevSpec Markdown reads AsciiDoc-style `:key: value` directives placed anywhere i
 :toclevels: 4
 ```
 
-| Attribute | Type | Description |
-| --- | --- | --- |
-| `:toc:` | bool | Enable table of contents (insert `[[TOC]]` or `{{TOC}}` at the desired position, or omit for auto-placement) |
-| `:toc-title: <text>` | string | Heading text above the TOC list |
-| `:toclevels: <n>` | number | Maximum heading depth to include in the TOC (default: all levels) |
+| Attribute            | Type   | Description                                                                                                  |
+| -------------------- | ------ | ------------------------------------------------------------------------------------------------------------ |
+| `:toc:`              | bool   | Enable table of contents (insert `[[TOC]]` or `{{TOC}}` at the desired position, or omit for auto-placement) |
+| `:toc-title: <text>` | string | Heading text above the TOC list                                                                              |
+| `:toclevels: <n>`    | number | Maximum heading depth to include in the TOC (default: all levels)                                            |
 
 * **Example document with TOC positioned manually:**
 ```markdown
@@ -136,10 +138,10 @@ DevSpec Markdown reads AsciiDoc-style `:key: value` directives placed anywhere i
 :sectnumlevels: 4
 ```
 
-| Attribute | Type | Description |
-| --- | --- | --- |
-| `:sectnums:` | bool | Enable automatic section numbering |
-| `:sectnumlevels: <n>` | number | Maximum heading depth to number |
+| Attribute             | Type   | Description                        |
+| --------------------- | ------ | ---------------------------------- |
+| `:sectnums:`          | bool   | Enable automatic section numbering |
+| `:sectnumlevels: <n>` | number | Maximum heading depth to number    |
 
 * **To disable numbering within a document:**
 ```markdown
@@ -161,20 +163,20 @@ or:
 ```
 
 ### Layout
-| Attribute | Type | Description |
-| --- | --- | --- |
-| `:noheader:` | bool | Hide the page header in preview and PDF |
-| `:nofooter:` | bool | Hide the page footer in preview and PDF |
-| `:imagesdir: <path>` | string | Base directory for resolving relative image paths |
-| `:icons:` | string | Enable icon set (use `font` for Font Awesome icons) |
+| Attribute            | Type   | Description                                         |
+| -------------------- | ------ | --------------------------------------------------- |
+| `:noheader:`         | bool   | Hide the page header in preview and PDF             |
+| `:nofooter:`         | bool   | Hide the page footer in preview and PDF             |
+| `:imagesdir: <path>` | string | Base directory for resolving relative image paths   |
+| `:icons:`            | string | Enable icon set (use `font` for Font Awesome icons) |
 
 ### Styling
-| Attribute | Type | Description |
-| --- | --- | --- |
-| `:stylesdir: <path>` | string | Directory containing the custom stylesheet (relative to the document) |
-| `:stylesheet: <file>` | string | CSS file to append after the built-in stylesheet |
-| `:source-highlighter:` | string | Syntax highlighter hint (e.g. `highlight.js`) |
-| `:source-language: <lang>` | string | Default language for unlabelled code fences |
+| Attribute                  | Type   | Description                                                           |
+| -------------------------- | ------ | --------------------------------------------------------------------- |
+| `:stylesdir: <path>`       | string | Directory containing the custom stylesheet (relative to the document) |
+| `:stylesheet: <file>`      | string | CSS file to append after the built-in stylesheet                      |
+| `:source-highlighter:`     | string | Syntax highlighter hint (e.g. `highlight.js`)                         |
+| `:source-language: <lang>` | string | Default language for unlabelled code fences                           |
 
 Custom stylesheet example:
 ```markdown
@@ -201,26 +203,26 @@ Each PDF header and footer has three independent slots: **left**, **center**, an
 ```
 
 ### PDF Metadata Attributes
-| Attribute | Description |
-| --- | --- |
-| `:pdf-title: <text>` | Document title — used in header/footer via `{title}` |
-| `:pdf-owner: <text>` | Owner or team name — used via `{owner}` |
-| `:pdf-version: <text>` | Version string — used via `{version}` |
-| `:pdf-show-header: true\|false` | Show or hide the header (overrides `:noheader:`) |
-| `:pdf-show-footer: true\|false` | Show or hide the footer (overrides `:nofooter:`) |
+| Attribute                       | Description                                          |
+| ------------------------------- | ---------------------------------------------------- |
+| `:pdf-title: <text>`            | Document title — used in header/footer via `{title}` |
+| `:pdf-owner: <text>`            | Owner or team name — used via `{owner}`              |
+| `:pdf-version: <text>`          | Version string — used via `{version}`                |
+| `:pdf-show-header: true\|false` | Show or hide the header (overrides `:noheader:`)     |
+| `:pdf-show-footer: true\|false` | Show or hide the footer (overrides `:nofooter:`)     |
 
 ### Header and Footer Slot Attributes
 Replace `header`/`footer` and `left`/`center`/`right` as needed.
 
-| Attribute | Description |
-| --- | --- |
-| `:pdf-header-left: <text>` | Left header slot content |
-| `:pdf-header-center: <text>` | Center header slot content |
-| `:pdf-header-right: <text>` | Right header slot content |
-| `:pdf-footer-left: <text>` | Left footer slot content |
-| `:pdf-footer-center: <text>` | Center footer slot content |
-| `:pdf-footer-right: <text>` | Right footer slot content |
-| `:pdf-header-left-font-size: <css>` | Font size for left header slot (e.g. `14px`) |
+| Attribute                             | Description                                   |
+| ------------------------------------- | --------------------------------------------- |
+| `:pdf-header-left: <text>`            | Left header slot content                      |
+| `:pdf-header-center: <text>`          | Center header slot content                    |
+| `:pdf-header-right: <text>`           | Right header slot content                     |
+| `:pdf-footer-left: <text>`            | Left footer slot content                      |
+| `:pdf-footer-center: <text>`          | Center footer slot content                    |
+| `:pdf-footer-right: <text>`           | Right footer slot content                     |
+| `:pdf-header-left-font-size: <css>`   | Font size for left header slot (e.g. `14px`)  |
 | `:pdf-header-left-font-weight: <css>` | Font weight for left header slot (e.g. `700`) |
 
 The same `-font-size` and `-font-weight` attributes are available for all six slots.
@@ -228,18 +230,18 @@ The same `-font-size` and `-font-weight` attributes are available for all six sl
 ### Placeholders
 Placeholders in header and footer slot values are replaced at render time.
 
-| Placeholder | Resolves to |
-| --- | --- |
-| `{title}` | `:pdf-title:` value |
-| `{owner}` | `:pdf-owner:` value |
-| `{version}` | `:pdf-version:` value |
-| `{fileName}` | Source `.md` file name |
-| `{page}` | Current page number |
-| `{totalPages}` | Total number of pages |
-| `{docname}` | Source file name without extension |
-| `{docfile}` | Absolute path of the source file |
-| `{docdate}` | File last-modified date |
-| `{localdate}` | Today's date |
+| Placeholder    | Resolves to                        |
+| -------------- | ---------------------------------- |
+| `{title}`      | `:pdf-title:` value                |
+| `{owner}`      | `:pdf-owner:` value                |
+| `{version}`    | `:pdf-version:` value              |
+| `{fileName}`   | Source `.md` file name             |
+| `{page}`       | Current page number                |
+| `{totalPages}` | Total number of pages              |
+| `{docname}`    | Source file name without extension |
+| `{docfile}`    | Absolute path of the source file   |
+| `{docdate}`    | File last-modified date            |
+| `{localdate}`  | Today's date                       |
 
 ---
 ## Shared Configuration Files
@@ -413,6 +415,51 @@ If auto-detection fails, set the browser path explicitly in your VS Code setting
 }
 ```
 
+### System Dependency check and installation
+DevSpec Markdown can check whether the current environment has the required system dependencies for preview, PlantUML rendering, and PDF export.
+
+The extension can check for:
+* Java runtime
+* FreeType
+* Fontconfig
+* Fonts
+* Graphviz
+* Chromium-based browser
+
+When the extension starts, it can automatically check dependencies if this setting is enabled:
+```json
+{ 
+  "devspecMarkdown.autoCheckDependencies": true
+}
+```
+If dependencies are missing, the extension shows a prompt:
+
+```
+DevSpec Markdown needs additional dependencies... 
+[Install Dependencies] [Show Details] [Don't Show Again]
+```
+
+### Supported environments
+
+```
+Windows             → winget
+macOS               → brew
+Debian / Ubuntu     → apt-get
+Amazon Linux 2023   → dnf with amzn-specific package names
+Fedora / RHEL-like  → dnf or yum
+Alpine              → apk
+Arch / Manjaro      → pacman
+openSUSE / SUSE     → zypper
+```
+
+>[!NOTE]
+> Because installing packages changes the user's machine/container
+> So we should do:
+> * Automatic check: yes
+> * Automatic prompt: yes
+> * One-click install: yes
+> * Silent install without permission: no
+
 ---
 ## Dev Container Usage
 When VS Code runs inside a Dev Container, the extension runs inside the container too. The browser installed on your host machine (Windows or macOS) is not accessible.
@@ -456,43 +503,22 @@ RUN apt-get update \
   && ldconfig
 ```
 
-### Supported environments
-
-```
-Windows             → winget
-macOS               → brew
-Debian / Ubuntu     → apt-get
-Amazon Linux 2023   → dnf with amzn-specific package names
-Fedora / RHEL-like  → dnf or yum
-Alpine              → apk
-Arch / Manjaro      → pacman
-openSUSE / SUSE     → zypper
-```
-
->[!NOTE]
-> Because installing packages changes the user's machine/container
-> So we should do:
-> * Automatic check: yes
-> * Automatic prompt: yes
-> * One-click install: yes
-> * Silent install without permission: no
-
 ---
 ## Extension Settings
 
 All settings use the prefix `devspecMarkdown.` and can be set in VS Code's Settings UI or `settings.json`.
 
-| Setting | Default | Description |
-| --- | --- | --- |
-| `diagramSourceDir` | `docs/diagrams/src` | Directory for separated `.puml` source files (relative to project root or absolute) |
-| `plantumlJarPath` | *(empty)* | Path to `plantuml.jar`. When empty, the bundled jar in `packages/core/vendor/` is used |
-| `plantumlSecurityProfile` | `SECURE` | PlantUML security profile. Use `UNSECURE` only when remote `!include` is required |
-| `previewDebounceMs` | `700` | Milliseconds to wait after a keystroke before refreshing the preview |
-| `sectionNumbering` | `true` | Enable automatic heading numbering globally (can be overridden per-document with `:sectnums:`) |
-| `sectionNumberMinLevel` | `2` | Minimum heading level to number (`2` = `h2` and deeper) |
-| `sectionNumberMaxLevel` | `4` | Maximum heading level to number |
-| `stripExistingSectionNumbers` | `true` | Remove manually written section numbers before generating automatic ones |
-| `browserPath` | *(empty)* | Override browser executable path for PDF export |
+| Setting                       | Default             | Description                                                                                    |
+| ----------------------------- | ------------------- | ---------------------------------------------------------------------------------------------- |
+| `diagramSourceDir`            | `docs/diagrams/src` | Directory for separated `.puml` source files (relative to project root or absolute)            |
+| `plantumlJarPath`             | *(empty)*           | Path to `plantuml.jar`. When empty, the bundled jar in `packages/core/vendor/` is used         |
+| `plantumlSecurityProfile`     | `SECURE`            | PlantUML security profile. Use `UNSECURE` only when remote `!include` is required              |
+| `previewDebounceMs`           | `700`               | Milliseconds to wait after a keystroke before refreshing the preview                           |
+| `sectionNumbering`            | `true`              | Enable automatic heading numbering globally (can be overridden per-document with `:sectnums:`) |
+| `sectionNumberMinLevel`       | `2`                 | Minimum heading level to number (`2` = `h2` and deeper)                                        |
+| `sectionNumberMaxLevel`       | `4`                 | Maximum heading level to number                                                                |
+| `stripExistingSectionNumbers` | `true`              | Remove manually written section numbers before generating automatic ones                       |
+| `browserPath`                 | *(empty)*           | Override browser executable path for PDF export                                                |
 
 ---
 
@@ -564,14 +590,5 @@ File: `/workspaces/project/src/main/java/com/example/service/VeryLongName.java`
 ```
 
 ---
-## Known Limitations
-- PDF export requires a locally installed Chromium-based browser.
-- Dev Container PDF export requires a browser installed inside the container.
-- Very large PlantUML diagrams are scaled to fit the PDF page width.
-- Remote `!include` in PlantUML requires setting `plantumlSecurityProfile` to `UNSECURE`.
-- Extremely wide tables may need manual column design for best PDF output.
-
----
-
 ## License
 MIT
