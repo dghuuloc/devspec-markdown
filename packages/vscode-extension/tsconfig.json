@@ -1,27 +1,27 @@
 {
-  "compilerOptions": {
-    "module": "commonjs",
-    "target": "ES2022",
-    "lib": [
-      "ES2022"
+    "compilerOptions": {
+        "module": "commonjs",
+        "target": "ES2022",
+        "lib": [
+            "ES2022"
+        ],
+        "outDir": "out",
+        "rootDir": "src",
+        "sourceMap": true,
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "moduleResolution": "node",
+        "types": [
+            "node",
+            "vscode"
+        ]
+    },
+    "include": [
+        "src/**/*.ts"
     ],
-    "outDir": "out",
-    "rootDir": "src",
-    "sourceMap": true,
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "moduleResolution": "node",
-    "types": [
-      "node",
-      "vscode"
+    "exclude": [
+        "node_modules",
+        "out"
     ]
-  },
-  "include": [
-    "src/**/*.ts"
-  ],
-  "exclude": [
-    "node_modules",
-    "out"
-  ]
 }

@@ -136,10 +136,22 @@ export function parseDevSpecDirectives(
     const attrs: DevSpecAttributes = createBuiltInAttributes(context);
     const keptLines: string[] = [];
     let foundDirective = false;
+    let inFence = false;
 
     const lines = expandedMarkdown.split(/\r?\n/);
 
     for (const line of lines) {
+        if (isMarkdownFenceLine(line)) {
+            inFence = !inFence;
+            keptLines.push(line);
+            continue;
+        }
+
+        if (inFence) {
+            keptLines.push(line);
+            continue;
+        }
+
         const unsetMatch = line.match(/^:!?([A-Za-z0-9_-]+)!:\s*$/);
         const setMatch = line.match(/^:([A-Za-z0-9_-]+):\s*(.*)$/);
 
@@ -373,9 +385,20 @@ function expandDevSpecIncludes(
     const currentFile = context.inputFile ? path.resolve(context.inputFile) : undefined;
     const currentDir = currentFile ? path.dirname(currentFile) : process.cwd();
 
+    let inFence = false;
+
     return markdown
         .split(/\r?\n/)
         .map((line) => {
+            if (isMarkdownFenceLine(line)) {
+                inFence = !inFence;
+                return line;
+            }
+
+            if (inFence) {
+                return line;
+            }
+
             const match = line.match(/^include::(.+?)\[\]\s*$/);
 
             if (!match) {
@@ -410,6 +433,10 @@ function expandDevSpecIncludes(
             );
         })
         .join("\n");
+}
+
+function isMarkdownFenceLine(line: string): boolean {
+    return /^(```|~~~)/.test(line.trim());
 }
 
 function replaceBuiltInAttributes(markdown: string, attrs: DevSpecAttributes): string {

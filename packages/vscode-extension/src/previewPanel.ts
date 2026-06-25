@@ -8,6 +8,26 @@ import {
 	type DevSpecAttributes
 } from "@devspec-markdown/core";
 
+/**
+ * Manages a VS Code {@link vscode.WebviewPanel} that renders a live
+ * DevSpec Markdown preview for a single Markdown document.
+ *
+ * At most one `DevSpecPreviewPanel` exists per document URI. The static
+ * {@link DevSpecPreviewPanel.panels} map enforces this invariant.
+ *
+ * ### Update strategy
+ * - **Initial render** — the full HTML page (shell + CSS + body) is set
+ *   via `webview.html`. A lightweight client-side script is injected to
+ *   handle subsequent incremental updates.
+ * - **Incremental updates** — only the body HTML fragment is re-rendered
+ *   and posted to the webview via `postMessage`. If the body is unchanged,
+ *   no message is sent (no-op diff).
+ * - **Debouncing** — text-change events are debounced using
+ *   `devspecMarkdown.previewDebounceMs` (default 700 ms). Save events use
+ *   an 80 ms delay so PlantUML diagrams re-render quickly after save.
+ * - **Race-condition guard** — `renderVersion` is incremented before each
+ *   async render; stale results are discarded silently.
+ */
 export class DevSpecPreviewPanel {
 	private static readonly viewType = "devspecMarkdown.preview";
 	private static readonly panels = new Map<string, DevSpecPreviewPanel>();
@@ -22,6 +42,20 @@ export class DevSpecPreviewPanel {
 	private renderVersion = 0;
 	private lastBodyHtml = "";
 
+	/**
+	 * Creates a new {@link DevSpecPreviewPanel} for `document`, or reveals
+	 * the existing one if it is already open.
+	 *
+	 * The webview is placed in the column beside the active editor
+	 * (`vscode.ViewColumn.Beside`). Local resource roots are set to the
+	 * extension URI and the workspace folder so that images resolve
+	 * correctly via `webview.asWebviewUri`.
+	 *
+	 * @param context - The extension context, used to obtain the extension
+	 *   URI and to create the webview panel.
+	 * @param document - The Markdown document to preview.
+	 * @returns The newly created or existing `DevSpecPreviewPanel` instance.
+	 */
 	public static createOrShow(
 		context: vscode.ExtensionContext,
 		document: vscode.TextDocument
@@ -93,6 +127,20 @@ export class DevSpecPreviewPanel {
 		);
 	}
 
+	/**
+	 * Schedules a debounced call to {@link DevSpecPreviewPanel.update}.
+	 *
+	 * Any in-flight timer is cleared before setting a new one:
+	 * - `forcePlantUml = true` (after save): 80 ms delay so diagrams
+	 *   re-render quickly.
+	 * - `forcePlantUml = false` (during typing): delay from
+	 *   `devspecMarkdown.previewDebounceMs` (default 700 ms) to avoid
+	 *   re-rendering on every keystroke.
+	 *
+	 * @param document - The current document state.
+	 * @param forcePlantUml - When `true` the render pass will re-invoke
+	 *   PlantUML even for diagrams that are already cached.
+	 */
 	private scheduleUpdate(document: vscode.TextDocument, forcePlantUml: boolean): void {
 		this.document = document;
 
@@ -109,6 +157,25 @@ export class DevSpecPreviewPanel {
 		}, delayMs);
 	}
 
+	/**
+	 * Performs a full render of `document` and updates the webview.
+	 *
+	 * On the **first call** the complete HTML page is written to
+	 * `webview.html` (initial load). On **subsequent calls** only the body
+	 * HTML fragment is posted via `postMessage`, which the injected client
+	 * script patches into the DOM while preserving the scroll position.
+	 *
+	 * If the rendered `bodyHtml` is identical to the previous render,
+	 * the method returns early without sending any message.
+	 *
+	 * A stale render (when `renderVersion` has advanced since this call
+	 * began) is discarded silently to avoid overwriting a newer result.
+	 *
+	 * @param document - The document to render.
+	 * @param forcePlantUml - When `true`, PlantUML diagrams are always
+	 *   re-rendered even if a cached SVG exists. Set to `true` after a
+	 *   document save; `false` during live typing.
+	 */
 	public async update(
 		document: vscode.TextDocument,
 		forcePlantUml = false
@@ -209,6 +276,14 @@ export class DevSpecPreviewPanel {
 		}
 	}
 
+	/**
+	 * Cleans up the panel instance:
+	 * - Removes this panel from the static {@link DevSpecPreviewPanel.panels} map.
+	 * - Cancels any pending debounce timer.
+	 * - Disposes all VS Code {@link vscode.Disposable}s (event listeners).
+	 *
+	 * Called automatically when the webview panel fires `onDidDispose`.
+	 */
 	private dispose(): void {
 		DevSpecPreviewPanel.panels.delete(this.document.uri.toString());
 
@@ -222,6 +297,28 @@ export class DevSpecPreviewPanel {
 	}
 }
 
+/**
+ * Transforms the full HTML string produced by `renderMarkdownToHtml` into
+ * a webview-compatible document.
+ *
+ * The following modifications are applied:
+ * 1. A Content Security Policy `<meta>` tag is prepended to `<head>`,
+ *    restricting scripts to those with the generated nonce.
+ * 2. The `<article>` element is given the stable `id="devspec-content"`
+ *    so the client script can locate it by ID.
+ * 3. The preview file-title `<span>` is given the stable
+ *    `id="devspec-preview-file-title"` so it can be updated by the client
+ *    script.
+ * 4. A nonce-gated `<script>` block is appended before `</body>` that
+ *    listens for `postMessage` events of type `"update"` and patches the
+ *    article `innerHTML` in-place, restoring the scroll position by ratio.
+ *
+ * @param html - The complete HTML string from the core renderer.
+ * @param webview - The webview instance, used for CSP source and nonce.
+ * @param initialBodyHtml - The initial body HTML fragment already embedded
+ *   in `html`; also written to `lastBodyHtml` for future diff checks.
+ * @returns The transformed HTML string ready to assign to `webview.html`.
+ */
 function prepareInitialPreviewHtml(
 	html: string,
 	webview: vscode.Webview,
@@ -285,6 +382,17 @@ function prepareInitialPreviewHtml(
 	return output;
 }
 
+/**
+ * Creates a minimal error-display HTML page for the webview.
+ *
+ * The page still includes the client-side `postMessage` listener so it can
+ * be replaced by a successful render without reloading the webview.
+ *
+ * @param errorBody - An HTML fragment containing the error message,
+ *   typically an `<h2>` and a `<pre>` with the stack or message text.
+ * @param webview - The webview instance, used for CSP source and nonce.
+ * @returns A complete HTML string ready to assign to `webview.html`.
+ */
 function createErrorHtml(errorBody: string, webview: vscode.Webview): string {
 	const nonce = createNonce();
 	const csp = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} data:; style-src 'unsafe-inline' ${webview.cspSource}; script-src 'nonce-${nonce}';">`;

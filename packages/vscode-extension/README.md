@@ -1,43 +1,36 @@
-# DevSpec Markdown
+# <p align="center"> DevSpec Markdown Extension for Visual Studio Code </p>
 
-**DevSpec Markdown** is a Visual Studio Code extension for writing professional technical documentation in Markdown.
+**DevSpec Markdown** is a VS Code extension for writing professional technical documentation in Markdown — with live preview, automatic table of contents, section numbering, PlantUML diagrams, syntax-highlighted code blocks, HTML export, and polished PDF output with custom headers, footers, and page numbers.
 
-It provides a dedicated DevSpec preview, table of contents generation, section numbering, PlantUML diagram rendering, syntax-highlighted code blocks, HTML export, and polished PDF export with headers, footers, and page numbers.
+Built for engineering documents: development specifications, architecture records, API design notes, implementation summaries, runbooks, and internal technical reports.
 
-DevSpec Markdown is designed for engineering documents such as development specifications, architecture documents, API design notes, implementation summaries, runbooks, and internal technical reports.
-
+---
 ## Features
 
-* Live DevSpec preview for Markdown files
-* Professional HTML export
-* Professional PDF export
-* Automatic table of contents
-* Automatic section numbering
-* PDF headers and footers
-* PDF page numbers
-* PlantUML diagram rendering
-* Syntax-highlighted code blocks
-* GitHub-style Markdown alerts
-* DevSpec-style document attributes
-* Shared document configuration support
-* Long text, long file path, and long code-line handling for PDF export
-* Works with normal `.md` Markdown files
+| | |
+|---|---|
+| 🖥️ **Live preview** | Dedicated DevSpec preview panel with debounced auto-refresh |
+| 📄 **HTML export** | Export to a self-contained `.devspec.html` file |
+| 📑 **PDF export** | Export to a print-ready `.devspec.pdf` with headers, footers, and page numbers |
+| 📋 **Table of contents** | Auto-generated TOC from Markdown headings |
+| 🔢 **Section numbering** | Automatic hierarchical heading numbers (`1.`, `1.1.`, `1.1.1.`) |
+| 🌿 **PlantUML diagrams** | Render embedded `plantuml` fences and separated `.puml` files |
+| 🎨 **Syntax highlighting** | Language-tagged code blocks with highlight.js |
+| 🚨 **Markdown alerts** | GitHub-style `[!NOTE]`, `[!TIP]`, `[!WARNING]`, `[!IMPORTANT]`, `[!CAUTION]` |
+| ⚙️ **Document attributes** | AsciiDoc-style `:key: value` directives for TOC, numbering, PDF metadata, and styling |
+| 📁 **Shared config** | Include a shared attribute file across multiple documents with `include::` |
+| 🎛️ **Custom stylesheet** | Override the built-in CSS with your own stylesheet |
 
-## Commands
+---
+## Requirements
+- **Java** — required for PlantUML diagram rendering (`java` must be on your `PATH`)
+- **Chromium-based browser** — required for PDF export (Edge, Chrome, Brave, or Chromium)
 
-Open a Markdown file, then run one of these commands from the VS Code Command Palette.
-
-| Command                                    | Description                                                 |
-| ------------------------------------------ | ----------------------------------------------------------- |
-| `DevSpec: Open Preview`                    | Open the DevSpec live preview for the current Markdown file |
-| `DevSpec: Export Current Markdown to HTML` | Export the current Markdown file to `.devspec.html`         |
-| `DevSpec: Export Current Markdown to PDF`  | Export the current Markdown file to `.devspec.pdf`          |
-
-## Quick Star
-Create a Markdown file:
-
+---
+## Quick Start
+**1. Create a Markdown file, e.g. `design.md`:**
 ````markdown
-# Backend Implementation Summary
+# Backend Service Design
 
 :toc:
 :toc-title: Table of Contents
@@ -46,7 +39,7 @@ Create a Markdown file:
 :sectnums:
 :sectnumlevels: 4
 
-:pdf-title: Backend Implementation Summary
+:pdf-title: Backend Service Design
 :pdf-owner: Engineering Team
 :pdf-version: v1.0
 :pdf-header-left: {title}
@@ -54,89 +47,79 @@ Create a Markdown file:
 :pdf-footer-right: Page {page} / {totalPages}
 
 ## Overview
-
-This document describes the implementation design.
+This document describes the backend service design.
 
 ## Architecture
-
 ```plantuml
 @startuml
 actor User
-participant "Service" as Service
+participant "API Service" as API
 participant "Worker" as Worker
 database "Database" as DB
 
-User -> Service: Request
-Service -> DB: Create task
-Service -> Worker: Dispatch task
+User -> API: POST /task
+API -> DB: Insert task
+API -> Worker: Dispatch
 Worker -> DB: Update status
+Worker --> User: Notify
 @enduml
 ```
 
 ## Implementation
-
 Add implementation details here.
 ````
 
-Then run:
+**2. Open the DevSpec preview:**
+- Press `Ctrl+Alt+V` (macOS: `Cmd+Alt+V`), or
+- Open the Command Palette (`Ctrl+Shift+P`) and run **DevSpec: Open Preview**
 
-```text
-DevSpec: Open Preview
-```
+**3. Export to PDF:**
+- Press `Ctrl+Alt+P` (macOS: `Cmd+Alt+P`), or
+- Run **DevSpec: Export Current Markdown to PDF**
 
-To export PDF:
+---
+## Commands
+Open a Markdown file, then run any of these commands from the Command Palette (`Ctrl+Shift+P`).
 
-```text
-DevSpec: Export Current Markdown to PDF
-```
+| Command | Shortcut | Description |
+| --- | --- | --- |
+| **DevSpec: Open Preview** | `Ctrl+Alt+V` | Open the live DevSpec preview beside the editor |
+| **DevSpec: Export Current Markdown to HTML** | — | Export to `.devspec.html` next to the source file |
+| **DevSpec: Export Current Markdown to PDF** | `Ctrl+Alt+P` | Export to `.devspec.pdf` via a Save dialog |
 
+Commands are only available when a Markdown file is open in the active editor.
+
+---
 ## Document Attributes
-
-DevSpec Markdown supports document attributes inside Markdown files.
-
-Place attributes near the top of your document.
+DevSpec Markdown reads AsciiDoc-style `:key: value` directives placed anywhere in the document (typically near the top). Directive lines are stripped before rendering — they never appear in the output.
 
 ```markdown
-:toc:
-:toc-title: Table of Contents
-:toclevels: 4
-
-:sectnums:
-:sectnumlevels: 4
-
-:pdf-title: My Document
-:pdf-owner: Engineering Team
-:pdf-version: v1.0
-
-:pdf-header-left: {title}
-:pdf-header-center:
-:pdf-header-right: {owner} · {version}
-
-:pdf-footer-left:
-:pdf-footer-center:
-:pdf-footer-right: Page {page} / {totalPages}
+:key:               → boolean true
+:key: value         → string or number
+:key: false         → boolean false
+:!key!:             → boolean false (alternative syntax)
 ```
 
-## Table of Contents
-
-Enable table of contents:
-
+### Table of Contents
 ```markdown
 :toc:
 :toc-title: Table of Contents
 :toclevels: 4
 ```
 
-The table of contents is generated from Markdown headings.
+| Attribute | Type | Description |
+| --- | --- | --- |
+| `:toc:` | bool | Enable table of contents (insert `[[TOC]]` or `{{TOC}}` at the desired position, or omit for auto-placement) |
+| `:toc-title: <text>` | string | Heading text above the TOC list |
+| `:toclevels: <n>` | number | Maximum heading depth to include in the TOC (default: all levels) |
 
-Example:
-
+* **Example document with TOC positioned manually:**
 ```markdown
 # My Document
 
 :toc:
-:toc-title: Table of Contents
-:toclevels: 4
+:toc-title: Contents
+:toclevels: 3
 
 ## Overview
 
@@ -147,35 +130,62 @@ Example:
 ### Component B
 ```
 
-## Section Numbering
-Enable automatic section numbering:
-
+### Section Numbering
 ```markdown
 :sectnums:
 :sectnumlevels: 4
 ```
 
-Disable section numbering:
+| Attribute | Type | Description |
+| --- | --- | --- |
+| `:sectnums:` | bool | Enable automatic section numbering |
+| `:sectnumlevels: <n>` | number | Maximum heading depth to number |
+
+* **To disable numbering within a document:**
 ```markdown
 :sectnums: false
 ```
 
 or:
 ```markdown
-:sectnums!:
+:!sectnums!:
 ```
 
-Example output:
-```text
+* **Example output with `sectnums` enabled:**
+```
 1. Overview
 2. Design
-2.1. Component A
-2.2. Component B
+  2.1. Component A
+  2.2. Component B
+    2.2.1. Sub-component
 ```
 
-## PDF Header and Footer
+### Layout
+| Attribute | Type | Description |
+| --- | --- | --- |
+| `:noheader:` | bool | Hide the page header in preview and PDF |
+| `:nofooter:` | bool | Hide the page footer in preview and PDF |
+| `:imagesdir: <path>` | string | Base directory for resolving relative image paths |
+| `:icons:` | string | Enable icon set (use `font` for Font Awesome icons) |
 
-PDF export supports custom headers and footers.
+### Styling
+| Attribute | Type | Description |
+| --- | --- | --- |
+| `:stylesdir: <path>` | string | Directory containing the custom stylesheet (relative to the document) |
+| `:stylesheet: <file>` | string | CSS file to append after the built-in stylesheet |
+| `:source-highlighter:` | string | Syntax highlighter hint (e.g. `highlight.js`) |
+| `:source-language: <lang>` | string | Default language for unlabelled code fences |
+
+Custom stylesheet example:
+```markdown
+:stylesdir: docs/styles
+:stylesheet: my-theme.css
+```
+
+---
+## PDF Headers and Footers
+Each PDF header and footer has three independent slots: **left**, **center**, and **right**.
+
 ```markdown
 :pdf-title: My Document
 :pdf-owner: Engineering Team
@@ -190,24 +200,53 @@ PDF export supports custom headers and footers.
 :pdf-footer-right: Page {page} / {totalPages}
 ```
 
-Supported placeholders:
+### PDF Metadata Attributes
+| Attribute | Description |
+| --- | --- |
+| `:pdf-title: <text>` | Document title — used in header/footer via `{title}` |
+| `:pdf-owner: <text>` | Owner or team name — used via `{owner}` |
+| `:pdf-version: <text>` | Version string — used via `{version}` |
+| `:pdf-show-header: true\|false` | Show or hide the header (overrides `:noheader:`) |
+| `:pdf-show-footer: true\|false` | Show or hide the footer (overrides `:nofooter:`) |
 
-| Placeholder    | Description               |
-| -------------- | ------------------------- |
-| `{title}`      | PDF title                 |
-| `{owner}`      | PDF owner or team         |
-| `{version}`    | PDF version               |
-| `{fileName}`   | Source Markdown file name |
-| `{page}`       | Current page number       |
-| `{totalPages}` | Total number of pages     |
+### Header and Footer Slot Attributes
+Replace `header`/`footer` and `left`/`center`/`right` as needed.
 
+| Attribute | Description |
+| --- | --- |
+| `:pdf-header-left: <text>` | Left header slot content |
+| `:pdf-header-center: <text>` | Center header slot content |
+| `:pdf-header-right: <text>` | Right header slot content |
+| `:pdf-footer-left: <text>` | Left footer slot content |
+| `:pdf-footer-center: <text>` | Center footer slot content |
+| `:pdf-footer-right: <text>` | Right footer slot content |
+| `:pdf-header-left-font-size: <css>` | Font size for left header slot (e.g. `14px`) |
+| `:pdf-header-left-font-weight: <css>` | Font weight for left header slot (e.g. `700`) |
+
+The same `-font-size` and `-font-weight` attributes are available for all six slots.
+
+### Placeholders
+Placeholders in header and footer slot values are replaced at render time.
+
+| Placeholder | Resolves to |
+| --- | --- |
+| `{title}` | `:pdf-title:` value |
+| `{owner}` | `:pdf-owner:` value |
+| `{version}` | `:pdf-version:` value |
+| `{fileName}` | Source `.md` file name |
+| `{page}` | Current page number |
+| `{totalPages}` | Total number of pages |
+| `{docname}` | Source file name without extension |
+| `{docfile}` | Absolute path of the source file |
+| `{docdate}` | File last-modified date |
+| `{localdate}` | Today's date |
+
+---
 ## Shared Configuration Files
+Keep common attributes in a shared file and pull it into any document with an `include::` directive.
 
-You can keep common document attributes in a shared Markdown configuration file and include it from multiple documents.
-
-Recommended structure:
-
-```text
+**Recommended structure:**
+```
 docs/
 ├─ config/
 │  └─ devspec-properties.md
@@ -215,8 +254,7 @@ docs/
    └─ design-document.md
 ```
 
-Example `docs/config/devspec-properties.md`:
-
+**`docs/config/devspec-properties.md`:**
 ```markdown
 :toc:
 :toc-title: Table of Contents
@@ -227,15 +265,27 @@ Example `docs/config/devspec-properties.md`:
 
 :pdf-owner: Engineering Team
 :pdf-version: v1.0
+
 :pdf-header-left: {title}
 :pdf-header-right: {owner} · {version}
 :pdf-footer-right: Page {page} / {totalPages}
 ```
 
-## PlantUML Support
+**`docs/templates/design-document.md`:**
 
-DevSpec Markdown supports PlantUML code fences.
+```markdown
+include::../config/devspec-properties.md[]
 
+:pdf-title: Backend Service Design
+
+# Backend Service Design
+## Overview
+```
+Paths in `include::` are resolved relative to the file that contains the directive.
+
+---
+## PlantUML Diagrams
+Embed PlantUML diagrams directly in a `plantuml` (or `puml`) fenced block:
 ````markdown
 ```plantuml
 @startuml
@@ -251,12 +301,19 @@ API --> User: Response
 ```
 ````
 
-PlantUML diagrams are rendered in preview, HTML export, and PDF export.
+Diagrams are rendered in the DevSpec preview, HTML export, and PDF export.
 
-## Code Blocks
+For separated `.puml` files, place them in `docs/diagrams/src/` and reference them inline:
+```markdown
+{{plantuml:my-sequence-diagram}}
+```
 
-DevSpec Markdown supports syntax-highlighted code blocks.
+> **Note:** Java must be installed and on your `PATH` for PlantUML rendering to work.
+> You can configure a custom `plantuml.jar` path via the `devspecMarkdown.plantumlJarPath` setting if the bundled jar is not used.
 
+---
+## Syntax-Highlighted Code Blocks
+Use standard fenced code blocks with a language tag:
 ````markdown
 ```java
 public class Example {
@@ -267,206 +324,254 @@ public class Example {
 ```
 ````
 
-Supported behavior:
+**Features:**
+- Language badge shown above each block
+- Syntax highlighting via highlight.js (100+ languages)
+- PDF-friendly line wrapping for long lines
+- Smart page splitting for large code blocks
+- Inline code and long file paths wrapped correctly in PDF
 
-* Syntax highlighting
-* Language badge
-* PDF-friendly line wrapping
-* Page splitting for long code blocks
-* Long file path and long code-line handling
-
+---
 ## Markdown Alerts
-
-GitHub-style Markdown alerts are supported.
+GitHub-style alert blocks are fully supported:
 
 ```markdown
 > [!NOTE]
-> Useful information for readers.
+> Useful information for the reader.
 
 > [!TIP]
-> A recommendation or best practice.
-
-> [!WARNING]
-> Something that needs attention.
+> A helpful recommendation or best practice.
 
 > [!IMPORTANT]
-> Important information that should not be missed.
+> Critical information that must not be missed.
+
+> [!WARNING]
+> Content that requires careful attention.
 
 > [!CAUTION]
-> Risky or dangerous behavior to avoid.
+> Risky or potentially harmful actions to avoid.
 ```
 
+---
+## Page Breaks
+Insert a manual page break in the PDF output:
+```markdown
+{{pagebreak}}
+```
+
+or:
+```markdown
+{{page-break}}
+```
+
+HTML comment and AsciiDoc-style page breaks are also supported:
+```markdown
+<!-- pagebreak -->
+
+<<<
+```
+---
 ## PDF Export
+PDF export renders your document through a local Chromium-based browser using Puppeteer. No cloud service or external account is required.
 
-PDF export uses a local Chromium-based browser through Puppeteer.
+**Supported browsers (auto-detected):**
+- Microsoft Edge
+- Google Chrome
+- Brave Browser
+- Chromium
 
-The extension automatically tries to detect:
+The extension searches for a browser using the following priority order:
+1. `devspecMarkdown.browserPath` VS Code setting
+2. `DEVSPEC_BROWSER_PATH`, `PUPPETEER_EXECUTABLE_PATH`, `CHROME_PATH`, or `EDGE_PATH` environment variables
+3. Common install paths (Windows Program Files / LocalAppData, macOS `/Applications`, Linux `/usr/bin`, `/snap/bin`)
+4. Windows Registry `App Paths` keys
+5. System `PATH`
 
-* Microsoft Edge
-* Google Chrome
-* Brave Browser
-* Chromium
+Most users do not need to configure anything manually.
 
-Browser detection checks:
+### Custom Browser Path
+If auto-detection fails, set the browser path explicitly in your VS Code settings:
 
-* VS Code setting override
-* Environment variables
-* Common Windows, macOS, and Linux install paths
-* Windows Registry App Paths
-* System `PATH`
-
-Most users do not need to configure a browser path manually.
-
-### Optional Browser Override
-
-If automatic detection fails, configure the browser executable path manually.
-
-Windows example:
-
+**Windows:**
 ```json
 {
   "devspecMarkdown.browserPath": "C:/Program Files/Microsoft/Edge/Application/msedge.exe"
 }
 ```
 
-Linux example:
-
-```json
-{
-  "devspecMarkdown.browserPath": "/usr/bin/chromium"
-}
-```
-
-macOS example:
-
+**macOS:**
 ```json
 {
   "devspecMarkdown.browserPath": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 }
 ```
 
-## Dev Container Usage
-
-When VS Code is opened inside a Dev Container, workspace extensions run inside the container environment.
-
-That means PDF export cannot use Chrome or Edge installed on your Windows or macOS host machine. A browser must be installed inside the container.
-
-For Debian or Ubuntu-based containers:
-
-```dockerfile
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends chromium \
-    && rm -rf /var/lib/apt/lists/*
-```
-
-Then configure:
-
+**Linux:**
 ```json
 {
   "devspecMarkdown.browserPath": "/usr/bin/chromium"
 }
 ```
 
+---
+## Dev Container Usage
+When VS Code runs inside a Dev Container, the extension runs inside the container too. The browser installed on your host machine (Windows or macOS) is not accessible.
+
+### Check OS and package manager
+Run inside Dev Container:
+```bash
+cat /etc/os-release
+```
+
+If you see Debian/Ubuntu, use `apt`, `dpkg`, `dpkg-query`.
+
+### Check whether required package are installed
+For your DevSpec extension, check these:
+```bash
+dpkg -l | grep -E "libfreetype6|fontconfig|fonts-dejavu-core|fonts-noto-cjk|graphviz|chromium"
+```
+
+More precies:
+```bash
+dpkg-query -W -f='${Package} ${Status}\n' \
+  libfreetype6 \
+  fontconfig \
+  fonts-dejavu-core \
+  fonts-noto-cjk \
+  graphviz \
+  chromium
+```
+
+### Install Chromium inside the container image
+```dockerfile
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends \
+    libfreetype6 \
+    fontconfig \
+    fonts-dejavu-core \
+    fonts-noto-cjk \
+    graphviz \
+    chromium \
+  && rm -rf /var/lib/apt/lists/* \
+  && ldconfig
+```
+
+### Supported environments
+
+```
+Windows             → winget
+macOS               → brew
+Debian / Ubuntu     → apt-get
+Amazon Linux 2023   → dnf with amzn-specific package names
+Fedora / RHEL-like  → dnf or yum
+Alpine              → apk
+Arch / Manjaro      → pacman
+openSUSE / SUSE     → zypper
+```
+
+>[!NOTE]
+> Because installing packages changes the user's machine/container
+> So we should do:
+> * Automatic check: yes
+> * Automatic prompt: yes
+> * One-click install: yes
+> * Silent install without permission: no
+
+---
 ## Extension Settings
 
-| Setting                                       |             Default | Description                                                       |
-| --------------------------------------------- | ------------------: | ----------------------------------------------------------------- |
-| `devspecMarkdown.diagramSourceDir`            | `docs/diagrams/src` | Directory for separated PlantUML source files                     |
-| `devspecMarkdown.plantumlJarPath`             |               empty | Optional path to `plantuml.jar`                                   |
-| `devspecMarkdown.plantumlSecurityProfile`     |            `SECURE` | PlantUML security profile                                         |
-| `devspecMarkdown.previewDebounceMs`           |               `700` | Delay before refreshing live preview while typing                 |
-| `devspecMarkdown.sectionNumbering`            |              `true` | Enable automatic heading numbering                                |
-| `devspecMarkdown.sectionNumberMinLevel`       |                 `2` | Minimum heading level for numbering                               |
-| `devspecMarkdown.sectionNumberMaxLevel`       |                 `4` | Maximum heading level for numbering                               |
-| `devspecMarkdown.stripExistingSectionNumbers` |              `true` | Remove existing manual section numbers before generating new ones |
-| `devspecMarkdown.browserPath`                 |               empty | Optional browser executable path for PDF export                   |
+All settings use the prefix `devspecMarkdown.` and can be set in VS Code's Settings UI or `settings.json`.
+
+| Setting | Default | Description |
+| --- | --- | --- |
+| `diagramSourceDir` | `docs/diagrams/src` | Directory for separated `.puml` source files (relative to project root or absolute) |
+| `plantumlJarPath` | *(empty)* | Path to `plantuml.jar`. When empty, the bundled jar in `packages/core/vendor/` is used |
+| `plantumlSecurityProfile` | `SECURE` | PlantUML security profile. Use `UNSECURE` only when remote `!include` is required |
+| `previewDebounceMs` | `700` | Milliseconds to wait after a keystroke before refreshing the preview |
+| `sectionNumbering` | `true` | Enable automatic heading numbering globally (can be overridden per-document with `:sectnums:`) |
+| `sectionNumberMinLevel` | `2` | Minimum heading level to number (`2` = `h2` and deeper) |
+| `sectionNumberMaxLevel` | `4` | Maximum heading level to number |
+| `stripExistingSectionNumbers` | `true` | Remove manually written section numbers before generating automatic ones |
+| `browserPath` | *(empty)* | Override browser executable path for PDF export |
+
+---
 
 ## Troubleshooting
 ### PDF export cannot find a browser
 
-Install one of the following browsers:
+Install a Chromium-based browser (Edge, Chrome, Brave, or Chromium), or set the path manually:
+```json
+{ "devspecMarkdown.browserPath": "/path/to/browser" }
+```
 
-* Microsoft Edge
-* Google Chrome
-* Brave Browser
-* Chromium
+If you are using a Dev Container, see [Dev Container Usage](#dev-container-usage).
 
-If you are using a Dev Container, install Chromium inside the container.
+---
+### PDF export works locally but fails inside a Dev Container
 
-### PDF export works locally but not in Dev Container
-
-Install Chromium inside the container:
-
+The extension runs inside the container and cannot reach the host browser. Install Chromium inside the container:
 ```dockerfile
 RUN apt-get update \
     && apt-get install -y --no-install-recommends chromium \
     && rm -rf /var/lib/apt/lists/*
 ```
 
-Then set:
-
 ```json
-{
-  "devspecMarkdown.browserPath": "/usr/bin/chromium"
-}
+{ "devspecMarkdown.browserPath": "/usr/bin/chromium" }
 ```
 
+---
 ### PlantUML diagrams do not render
-
-Check that Java is installed and PlantUML is available.
-
-You can configure:
-
-```json
-{
-  "devspecMarkdown.plantumlJarPath": "C:/tools/plantuml/plantuml.jar"
-}
+Ensure `java` is installed and available on your `PATH`:
+```sh
+java -version
 ```
 
-### Preview is slow for large documents
-
-Increase the preview debounce time:
-
+If you want to use a specific `plantuml.jar`:
 ```json
-{
-  "devspecMarkdown.previewDebounceMs": 1200
-}
+{ "devspecMarkdown.plantumlJarPath": "C:/tools/plantuml/plantuml.jar" }
 ```
 
+If your diagrams use remote `!include` directives, set the security profile:
+```json
+{ "devspecMarkdown.plantumlSecurityProfile": "UNSECURE" }
+```
+
+---
+### Preview is slow on large documents
+Increase the debounce delay to reduce re-render frequency while typing:
+```json
+{ "devspecMarkdown.previewDebounceMs": 1500 }
+```
+
+---
 ### Section numbers appear twice
-
-Enable existing number cleanup:
-
+This happens when a document already contains manually written numbers. Enable automatic cleanup:
 ```json
-{
-  "devspecMarkdown.stripExistingSectionNumbers": true
-}
+{ "devspecMarkdown.stripExistingSectionNumbers": true }
 ```
 
-or disable numbering in the document:
-
+Or disable numbering for that document:
 ```markdown
-:sectnums: false
+:!sectnums!:
 ```
 
-### Long file paths overflow in PDF
-
-Use inline code for file paths:
-
+---
+### Long file paths or code lines overflow the PDF page
+Wrap file paths in inline code — DevSpec Markdown applies PDF-friendly wrapping automatically:
 ```markdown
-File: `/workspaces/project/src/main/java/example/VeryLongPath.java`
+File: `/workspaces/project/src/main/java/com/example/service/VeryLongName.java`
 ```
 
-DevSpec Markdown applies PDF-friendly wrapping for long paths and inline code.
-
+---
 ## Known Limitations
+- PDF export requires a locally installed Chromium-based browser.
+- Dev Container PDF export requires a browser installed inside the container.
+- Very large PlantUML diagrams are scaled to fit the PDF page width.
+- Remote `!include` in PlantUML requires setting `plantumlSecurityProfile` to `UNSECURE`.
+- Extremely wide tables may need manual column design for best PDF output.
 
-* PDF export requires an installed Chromium-based browser.
-* Dev Container PDF export requires a browser inside the container.
-* Very large diagrams may be scaled to fit the PDF page width.
-* Remote PlantUML includes may require changing the PlantUML security profile.
-* Extremely wide tables may need manual column design for best PDF output.
+---
 
 ## License
-
 MIT
