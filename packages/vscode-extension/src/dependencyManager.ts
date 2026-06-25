@@ -396,7 +396,7 @@ function createDebianInstallPlan(
         command: createAptInstallCommand(requiredPackages, optionalPackages),
         notes: [
             "Used for Debian and Ubuntu based environments.",
-            "Browser packages are treated as optional because some Ubuntu images provide Chromium through Snap or omit it from apt repositories."
+            "Browser packages are treated as optional because availability depends on repositories. If PDF export still fails after installation, install Chrome/Chromium manually or set DEVSPEC_BROWSER_PATH."
         ]
     };
 }
@@ -420,6 +420,8 @@ function createAmazonLinuxInstallPlan(missing: DependencyStatus[]): InstallPlan 
 
     if (hasMissing(missing, "fonts")) {
         requiredPackages.push("dejavu-sans-fonts");
+
+        // Optional because CJK fonts are useful but not required for all users.
         optionalPackages.push("google-noto-cjk-fonts");
     }
 
@@ -427,11 +429,11 @@ function createAmazonLinuxInstallPlan(missing: DependencyStatus[]): InstallPlan 
         requiredPackages.push("graphviz");
     }
 
-    // Important:
-    // Amazon Linux 2023 usually does NOT provide chromium in the default dnf repo.
-    // So we install Google Chrome RPM instead of optionalPackages.push("chromium").
+    // Only curl is directly needed by our installer to download Chrome RPM.
+    // Do not manually list gtk3, mesa, pipewire, libX*, etc.
+    // Let dnf resolve only Chrome's required dependencies.
     if (installChrome) {
-        requiredPackages.push("curl", "nss", "xdg-utils");
+        requiredPackages.push("curl");
     }
 
     return {
@@ -444,9 +446,9 @@ function createAmazonLinuxInstallPlan(missing: DependencyStatus[]): InstallPlan 
         ),
         notes: [
             "Used for Amazon Linux 2023 when /etc/os-release has ID=amzn.",
-            "Amazon Linux 2023 usually does not provide Chromium in the default repositories.",
-            "When the browser is missing, this installer downloads and installs Google Chrome RPM inside the dev-container.",
-            "PDF export runs inside the VS Code remote/dev-container environment, so the browser must exist inside that environment."
+            "Installs only top-level packages required by DevSpec Markdown.",
+            "Uses --setopt=install_weak_deps=False to reduce extra desktop/audio packages.",
+            "When browser is missing, installs Google Chrome RPM and lets dnf resolve required dependencies only."
         ]
     };
 }
@@ -492,106 +494,109 @@ function createGenericDnfInstallPlan(missing: DependencyStatus[]): InstallPlan {
 }
 
 function createAlpineInstallPlan(missing: DependencyStatus[]): InstallPlan {
-    const packages: string[] = [];
+    const requiredPackages: string[] = [];
+    const optionalPackages: string[] = [];
 
     if (hasMissing(missing, "java")) {
-        packages.push("openjdk17-jre-headless");
+        requiredPackages.push("openjdk17-jre-headless");
     }
 
     if (hasMissing(missing, "freetype")) {
-        packages.push("freetype");
+        requiredPackages.push("freetype");
     }
 
     if (hasMissing(missing, "fontconfig")) {
-        packages.push("fontconfig");
+        requiredPackages.push("fontconfig");
     }
 
     if (hasMissing(missing, "fonts")) {
-        packages.push("ttf-dejavu", "noto-fonts-cjk");
+        requiredPackages.push("ttf-dejavu", "noto-fonts-cjk");
     }
 
     if (hasMissing(missing, "graphviz")) {
-        packages.push("graphviz");
+        requiredPackages.push("graphviz");
     }
 
     if (hasMissing(missing, "browser")) {
-        packages.push("chromium");
+        optionalPackages.push("chromium");
     }
 
     return {
         manager: "apk",
-        packages,
-        command: createApkInstallCommand(packages),
+        packages: [...requiredPackages, ...optionalPackages],
+        command: createApkInstallCommand(requiredPackages, optionalPackages),
         notes: ["Used for Alpine Linux environments."]
     };
 }
 
 function createArchInstallPlan(missing: DependencyStatus[]): InstallPlan {
-    const packages: string[] = [];
+    const requiredPackages: string[] = [];
+    const optionalPackages: string[] = [];
 
     if (hasMissing(missing, "java")) {
-        packages.push("jre-openjdk-headless");
+        requiredPackages.push("jre-openjdk-headless");
     }
 
     if (hasMissing(missing, "freetype")) {
-        packages.push("freetype2");
+        requiredPackages.push("freetype2");
     }
 
     if (hasMissing(missing, "fontconfig")) {
-        packages.push("fontconfig");
+        requiredPackages.push("fontconfig");
     }
 
     if (hasMissing(missing, "fonts")) {
-        packages.push("ttf-dejavu", "noto-fonts-cjk");
+        requiredPackages.push("ttf-dejavu", "noto-fonts-cjk");
     }
 
     if (hasMissing(missing, "graphviz")) {
-        packages.push("graphviz");
+        requiredPackages.push("graphviz");
     }
 
     if (hasMissing(missing, "browser")) {
-        packages.push("chromium");
+        optionalPackages.push("chromium");
     }
 
     return {
         manager: "pacman",
-        packages,
-        command: createPacmanInstallCommand(packages),
+        packages: [...requiredPackages, ...optionalPackages],
+        command: createPacmanInstallCommand(requiredPackages, optionalPackages),
         notes: ["Used for Arch Linux and Manjaro style environments."]
     };
 }
 
 function createSuseInstallPlan(missing: DependencyStatus[]): InstallPlan {
-    const packages: string[] = [];
+    const requiredPackages: string[] = [];
+    const optionalPackages: string[] = [];
 
     if (hasMissing(missing, "java")) {
-        packages.push("java-17-openjdk-headless");
+        requiredPackages.push("java-17-openjdk-headless");
     }
 
     if (hasMissing(missing, "freetype")) {
-        packages.push("freetype2");
+        requiredPackages.push("freetype2");
     }
 
     if (hasMissing(missing, "fontconfig")) {
-        packages.push("fontconfig");
+        requiredPackages.push("fontconfig");
     }
 
     if (hasMissing(missing, "fonts")) {
-        packages.push("dejavu-fonts", "noto-sans-cjk-fonts");
+        requiredPackages.push("dejavu-fonts", "noto-sans-cjk-fonts");
     }
 
     if (hasMissing(missing, "graphviz")) {
-        packages.push("graphviz");
+        requiredPackages.push("graphviz");
     }
 
     if (hasMissing(missing, "browser")) {
-        packages.push("chromium");
+        optionalPackages.push("chromium");
     }
 
     return {
         manager: "zypper",
-        packages,
-        command: createZypperInstallCommand(packages),
+        packages: [...requiredPackages, ...optionalPackages],
+        command: createZypperInstallCommand(requiredPackages, optionalPackages),
         notes: ["Used for openSUSE and SUSE style environments."]
     };
 }
@@ -659,38 +664,58 @@ function createMacInstallPlan(missing: DependencyStatus[]): InstallPlan | undefi
 }
 
 function createAptInstallCommand(requiredPackages: string[], optionalPackages: string[]): string {
-    return [
+    const commands = [
         "set -e",
         createSudoShellSnippet(),
+        "export DEBIAN_FRONTEND=noninteractive",
         "$SUDO apt-get update",
         `REQUIRED_PACKAGES="${requiredPackages.join(" ")}"`,
         `OPTIONAL_PACKAGES="${optionalPackages.join(" ")}"`,
         "INSTALL_PACKAGES=\"$REQUIRED_PACKAGES\"",
-        "for package_name in $OPTIONAL_PACKAGES; do if apt-cache show \"$package_name\" >/dev/null 2>&1 || dpkg-query -W \"$package_name\" >/dev/null 2>&1; then INSTALL_PACKAGES=\"$INSTALL_PACKAGES $package_name\"; else echo \"Skipping optional package because it is not available: $package_name\"; fi; done",
-        "if [ -z \"$(echo $INSTALL_PACKAGES | xargs)\" ]; then echo \"No installable packages were selected.\"; exit 0; fi",
-        "$SUDO apt-get install -y --no-install-recommends $INSTALL_PACKAGES",
-        "$SUDO ldconfig || true",
-        "echo \"DevSpec Markdown dependencies installed. Please reload VS Code if preview or PDF export still fails.\""
-    ].join(" && ");
+        "for package_name in $OPTIONAL_PACKAGES; do " +
+        "if apt-cache show \"$package_name\" >/dev/null 2>&1; then " +
+        "INSTALL_PACKAGES=\"$INSTALL_PACKAGES $package_name\"; " +
+        "else " +
+        "echo \"Skipping optional package because it is not available: $package_name\"; " +
+        "fi; " +
+        "done",
+        "if [ -n \"$(echo $INSTALL_PACKAGES | xargs)\" ]; then " +
+        "$SUDO apt-get install -y --no-install-recommends $INSTALL_PACKAGES; " +
+        "fi",
+        "($SUDO ldconfig || true)",
+        "echo \"DevSpec Markdown dependencies installed. Reload VS Code, then run DevSpec: Check System Dependencies.\""
+    ];
+
+    return commands.join(" && ");
 }
 
 function createDnfInstallCommand(requiredPackages: string[], optionalPackages: string[]): string {
     const manager = commandExists("dnf") ? "dnf" : "yum";
 
-    return [
+    const commands = [
         "set -e",
         createSudoShellSnippet(),
         `DNF="${manager}"`,
-        "$SUDO $DNF makecache || true",
+        `DNF_INSTALL_OPTIONS="${createDnfInstallOptions(manager)}"`,
+        "($SUDO $DNF makecache || true)",
         `REQUIRED_PACKAGES="${requiredPackages.join(" ")}"`,
         `OPTIONAL_PACKAGES="${optionalPackages.join(" ")}"`,
         "INSTALL_PACKAGES=\"$REQUIRED_PACKAGES\"",
-        "for package_name in $OPTIONAL_PACKAGES; do if $DNF list --available \"$package_name\" >/dev/null 2>&1 || rpm -q \"$package_name\" >/dev/null 2>&1; then INSTALL_PACKAGES=\"$INSTALL_PACKAGES $package_name\"; else echo \"Skipping optional package because it is not available: $package_name\"; fi; done",
-        "if [ -z \"$(echo $INSTALL_PACKAGES | xargs)\" ]; then echo \"No installable packages were selected.\"; exit 0; fi",
-        "$SUDO $DNF install -y $INSTALL_PACKAGES",
-        "$SUDO ldconfig || true",
-        "echo \"DevSpec Markdown dependencies installed. Please reload VS Code if preview or PDF export still fails.\""
-    ].join(" && ");
+        "for package_name in $OPTIONAL_PACKAGES; do " +
+        "if $DNF list --available \"$package_name\" >/dev/null 2>&1 || rpm -q \"$package_name\" >/dev/null 2>&1; then " +
+        "INSTALL_PACKAGES=\"$INSTALL_PACKAGES $package_name\"; " +
+        "else " +
+        "echo \"Skipping optional package because it is not available: $package_name\"; " +
+        "fi; " +
+        "done",
+        "if [ -n \"$(echo $INSTALL_PACKAGES | xargs)\" ]; then " +
+        "$SUDO $DNF install $DNF_INSTALL_OPTIONS $INSTALL_PACKAGES; " +
+        "fi",
+        "($SUDO $DNF makecache || true)",
+        "echo \"DevSpec Markdown dependencies installed. Reload VS Code, then run DevSpec: Check System Dependencies.\""
+    ];
+
+    return commands.join(" && ");
 }
 
 function createAmazonLinuxInstallCommand(
@@ -704,20 +729,34 @@ function createAmazonLinuxInstallCommand(
         "set -e",
         createSudoShellSnippet(),
         `DNF="${manager}"`,
+
+        `DNF_INSTALL_OPTIONS="${createDnfInstallOptions(manager)}"`,
         "$SUDO $DNF makecache || true",
         `REQUIRED_PACKAGES="${requiredPackages.join(" ")}"`,
         `OPTIONAL_PACKAGES="${optionalPackages.join(" ")}"`,
         "INSTALL_PACKAGES=\"$REQUIRED_PACKAGES\"",
-        "for package_name in $OPTIONAL_PACKAGES; do if $DNF list --available \"$package_name\" >/dev/null 2>&1 || rpm -q \"$package_name\" >/dev/null 2>&1; then INSTALL_PACKAGES=\"$INSTALL_PACKAGES $package_name\"; else echo \"Skipping optional package because it is not available: $package_name\"; fi; done",
-        "if [ -n \"$(echo $INSTALL_PACKAGES | xargs)\" ]; then $SUDO $DNF install -y $INSTALL_PACKAGES; fi"
+        "for package_name in $OPTIONAL_PACKAGES; do " +
+        "if $DNF list --available \"$package_name\" >/dev/null 2>&1 || rpm -q \"$package_name\" >/dev/null 2>&1; then " +
+        "INSTALL_PACKAGES=\"$INSTALL_PACKAGES $package_name\"; " +
+        "else " +
+        "echo \"Skipping optional package because it is not available: $package_name\"; " +
+        "fi; " +
+        "done",
+
+        "if [ -n \"$(echo $INSTALL_PACKAGES | xargs)\" ]; then " +
+        "$SUDO $DNF install $DNF_INSTALL_OPTIONS $INSTALL_PACKAGES; " +
+        "fi"
     ];
 
     if (installChrome) {
         commands.push(
-            "$SUDO rpm --import https://dl.google.com/linux/linux_signing_key.pub || true",
+            "($SUDO rpm --import https://dl.google.com/linux/linux_signing_key.pub || true)",
             "CHROME_RPM=$(mktemp /tmp/google-chrome-stable.XXXXXX.rpm)",
             "curl -L -o $CHROME_RPM https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm",
-            "$SUDO $DNF install -y $CHROME_RPM",
+
+            // Important: also disable weak dependencies when installing Chrome RPM.
+            "$SUDO $DNF install $DNF_INSTALL_OPTIONS $CHROME_RPM",
+
             "rm -f $CHROME_RPM",
             "google-chrome-stable --version",
             "echo \"Chrome path: $(command -v google-chrome-stable)\""
@@ -725,43 +764,85 @@ function createAmazonLinuxInstallCommand(
     }
 
     commands.push(
-        "$SUDO ldconfig || true",
+        "($SUDO ldconfig || true)",
         "echo \"DevSpec Markdown dependencies installed. Reload VS Code, then run DevSpec: Check System Dependencies.\""
     );
 
     return commands.join(" && ");
 }
 
-function createApkInstallCommand(packages: string[]): string {
-    return [
+function createApkInstallCommand(requiredPackages: string[], optionalPackages: string[]): string {
+    const commands = [
         "set -e",
         createSudoShellSnippet(),
-        "if [ -z \"$(echo " + packages.join(" ") + " | xargs)\" ]; then echo \"No packages were selected.\"; exit 0; fi",
-        `$SUDO apk add --no-cache ${packages.join(" ")}`,
-        "echo \"DevSpec Markdown dependencies installed. Please reload VS Code if preview or PDF export still fails.\""
-    ].join(" && ");
+        "$SUDO apk update",
+        `REQUIRED_PACKAGES="${requiredPackages.join(" ")}"`,
+        `OPTIONAL_PACKAGES="${optionalPackages.join(" ")}"`,
+        "INSTALL_PACKAGES=\"$REQUIRED_PACKAGES\"",
+        "for package_name in $OPTIONAL_PACKAGES; do " +
+        "if apk search -e \"$package_name\" | grep -qx \"$package_name\"; then " +
+        "INSTALL_PACKAGES=\"$INSTALL_PACKAGES $package_name\"; " +
+        "else " +
+        "echo \"Skipping optional package because it is not available: $package_name\"; " +
+        "fi; " +
+        "done",
+        "if [ -n \"$(echo $INSTALL_PACKAGES | xargs)\" ]; then " +
+        "$SUDO apk add --no-cache $INSTALL_PACKAGES; " +
+        "fi",
+        "echo \"DevSpec Markdown dependencies installed. Reload VS Code, then run DevSpec: Check System Dependencies.\""
+    ];
+
+    return commands.join(" && ");
 }
 
-function createPacmanInstallCommand(packages: string[]): string {
-    return [
+function createPacmanInstallCommand(requiredPackages: string[], optionalPackages: string[]): string {
+    const commands = [
         "set -e",
         createSudoShellSnippet(),
-        "if [ -z \"$(echo " + packages.join(" ") + " | xargs)\" ]; then echo \"No packages were selected.\"; exit 0; fi",
-        `$SUDO pacman -Sy --noconfirm ${packages.join(" ")}`,
-        "$SUDO ldconfig || true",
-        "echo \"DevSpec Markdown dependencies installed. Please reload VS Code if preview or PDF export still fails.\""
-    ].join(" && ");
+        "$SUDO pacman -Sy --noconfirm",
+        `REQUIRED_PACKAGES="${requiredPackages.join(" ")}"`,
+        `OPTIONAL_PACKAGES="${optionalPackages.join(" ")}"`,
+        "INSTALL_PACKAGES=\"$REQUIRED_PACKAGES\"",
+        "for package_name in $OPTIONAL_PACKAGES; do " +
+        "if pacman -Si \"$package_name\" >/dev/null 2>&1 || pacman -Qi \"$package_name\" >/dev/null 2>&1; then " +
+        "INSTALL_PACKAGES=\"$INSTALL_PACKAGES $package_name\"; " +
+        "else " +
+        "echo \"Skipping optional package because it is not available: $package_name\"; " +
+        "fi; " +
+        "done",
+        "if [ -n \"$(echo $INSTALL_PACKAGES | xargs)\" ]; then " +
+        "$SUDO pacman -S --needed --noconfirm $INSTALL_PACKAGES; " +
+        "fi",
+        "($SUDO ldconfig || true)",
+        "echo \"DevSpec Markdown dependencies installed. Reload VS Code, then run DevSpec: Check System Dependencies.\""
+    ];
+
+    return commands.join(" && ");
 }
 
-function createZypperInstallCommand(packages: string[]): string {
-    return [
+function createZypperInstallCommand(requiredPackages: string[], optionalPackages: string[]): string {
+    const commands = [
         "set -e",
         createSudoShellSnippet(),
-        "if [ -z \"$(echo " + packages.join(" ") + " | xargs)\" ]; then echo \"No packages were selected.\"; exit 0; fi",
-        `$SUDO zypper --non-interactive install ${packages.join(" ")}`,
-        "$SUDO ldconfig || true",
-        "echo \"DevSpec Markdown dependencies installed. Please reload VS Code if preview or PDF export still fails.\""
-    ].join(" && ");
+        "($SUDO zypper --non-interactive refresh || true)",
+        `REQUIRED_PACKAGES="${requiredPackages.join(" ")}"`,
+        `OPTIONAL_PACKAGES="${optionalPackages.join(" ")}"`,
+        "INSTALL_PACKAGES=\"$REQUIRED_PACKAGES\"",
+        "for package_name in $OPTIONAL_PACKAGES; do " +
+        "if zypper --non-interactive search --match-exact \"$package_name\" >/dev/null 2>&1; then " +
+        "INSTALL_PACKAGES=\"$INSTALL_PACKAGES $package_name\"; " +
+        "else " +
+        "echo \"Skipping optional package because it is not available: $package_name\"; " +
+        "fi; " +
+        "done",
+        "if [ -n \"$(echo $INSTALL_PACKAGES | xargs)\" ]; then " +
+        "$SUDO zypper --non-interactive install --no-recommends $INSTALL_PACKAGES; " +
+        "fi",
+        "($SUDO ldconfig || true)",
+        "echo \"DevSpec Markdown dependencies installed. Reload VS Code, then run DevSpec: Check System Dependencies.\""
+    ];
+
+    return commands.join(" && ");
 }
 
 function createWingetInstallCommand(packageIds: string[]): string {
@@ -950,15 +1031,31 @@ function getWindowsBrowserCandidates(): string[] {
 }
 
 function commandExists(command: string): boolean {
-    const lookupCommand = nodeProcess.platform === "win32" ? "where.exe" : "which";
+    if (nodeProcess.platform === "win32") {
+        const result = spawnSync("where.exe", [command], {
+            encoding: "utf8",
+            windowsHide: true,
+            stdio: ["ignore", "pipe", "ignore"]
+        });
 
-    const result = spawnSync(lookupCommand, [command], {
-        encoding: "utf8",
-        windowsHide: true,
-        stdio: ["ignore", "pipe", "ignore"]
-    });
+        return !result.error && result.status === 0;
+    }
+
+    const result = spawnSync(
+        "sh",
+        ["-lc", `command -v ${shellQuote(command)} >/dev/null 2>&1`],
+        {
+            encoding: "utf8",
+            windowsHide: true,
+            stdio: ["ignore", "pipe", "ignore"]
+        }
+    );
 
     return !result.error && result.status === 0;
+}
+
+function shellQuote(value: string): string {
+    return `'${value.replace(/'/g, `'\\''`)}'`;
 }
 
 function linuxPackageInstalled(packageName: string): boolean {
@@ -1057,4 +1154,12 @@ function fileExists(candidate: string): boolean {
     } catch {
         return false;
     }
+}
+
+function createDnfInstallOptions(manager: string): string {
+    if (manager === "dnf") {
+        return "-y --setopt=install_weak_deps=False";
+    }
+
+    return "-y";
 }
