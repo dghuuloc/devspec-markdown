@@ -21,6 +21,7 @@
         "package:vsix": "npm run compile && npm run prepare:vsix"
     },
     "devDependencies": {
+        "@devspec-markdown/core": "^0.0.1",
         "@types/node": "^26.0.0",
         "typescript": "^5.9.3"
     },

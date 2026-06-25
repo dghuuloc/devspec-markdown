@@ -164,6 +164,11 @@
                     "type": "boolean",
                     "default": true,
                     "description": "Automatically check DevSpec Markdown system dependencies when the extension starts."
+                },
+                "devspecMarkdown.previewScrollSync": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Synchronize scrolling between the Markdown editor and DevSpec preview."
                 }
             }
         },

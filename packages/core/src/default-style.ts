@@ -364,6 +364,20 @@ body {
   margin: 12px 0 24px 0;
   border: 1px solid var(--line);
   font-size: 12.8px;
+  page-break-inside: auto;
+  break-inside: auto;
+}
+
+.markdown-body thead {
+  display: table-header-group;
+}
+
+.markdown-body tbody {
+  page-break-inside: auto;
+  break-inside: auto;
+}
+
+.markdown-body tr {
   page-break-inside: avoid;
   break-inside: avoid;
 }
@@ -375,7 +389,7 @@ body {
   font-weight: 700;
   text-align: left;
   border: 1px solid #cbd5e1;
-  padding: 8px 10px;
+  padding: 6px 8px;
   overflow-wrap: anywhere;
   word-break: break-word;
 }
@@ -383,7 +397,7 @@ body {
 .markdown-body tbody td,
 .markdown-body table td {
   border: 1px solid #e0e4ec;
-  padding: 8px 10px;
+  padding: 6px 8px;
   vertical-align: top;
   color: #1f2937;
   overflow-wrap: anywhere;
@@ -967,11 +981,29 @@ body {
     page-break-after: avoid;
   }
 
-  .markdown-body table,
-  .markdown-body .markdown-alert,
-  .markdown-body .admonition {
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
+.markdown-body table {
+  break-inside: auto !important;
+  page-break-inside: auto !important;
+}
+
+.markdown-body thead {
+  display: table-header-group !important;
+}
+
+.markdown-body tbody {
+  break-inside: auto !important;
+  page-break-inside: auto !important;
+}
+
+.markdown-body tr {
+  break-inside: avoid !important;
+  page-break-inside: avoid !important;
+}
+
+.markdown-body .markdown-alert,
+.markdown-body .admonition {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
 }
 `;

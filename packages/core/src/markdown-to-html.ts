@@ -292,6 +292,20 @@ function createMarkdownRenderer(
 		}
 	});
 
+	md.core.ruler.push("devspec_source_lines", (state) => {
+		for (const token of state.tokens) {
+			if (!token.map || token.nesting !== 1) {
+				continue;
+			}
+
+			if (typeof token.attrSet !== "function") {
+				continue;
+			}
+
+			token.attrSet("data-source-line", String(token.map[0] + 1));
+		}
+	});
+
 	return md;
 }
 

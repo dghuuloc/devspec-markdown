@@ -42,6 +42,11 @@ export class DevSpecPreviewPanel {
 	private renderVersion = 0;
 	private lastBodyHtml = "";
 
+	private suppressEditorScrollUntil = 0;
+	private suppressPreviewScrollUntil = 0;
+	private lastEditorSyncLine = -1;
+	private lastPreviewSyncLine = -1;
+
 	/**
 	 * Creates a new {@link DevSpecPreviewPanel} for `document`, or reveals
 	 * the existing one if it is already open.
@@ -121,6 +126,44 @@ export class DevSpecPreviewPanel {
 				if (savedDocument.uri.toString() === this.document.uri.toString()) {
 					this.scheduleUpdate(savedDocument, true);
 				}
+			},
+			null,
+			this.disposables
+		);
+
+		vscode.window.onDidChangeTextEditorVisibleRanges(
+			(event) => {
+				if (event.textEditor.document.uri.toString() !== this.document.uri.toString()) {
+					return;
+				}
+
+				if (Date.now() < this.suppressEditorScrollUntil) {
+					return;
+				}
+
+				this.syncPreviewToEditor(event.textEditor);
+			},
+			null,
+			this.disposables
+		);
+
+		this.panel.webview.onDidReceiveMessage(
+			(message) => {
+				if (!message || message.type !== "previewDidScroll") {
+					return;
+				}
+
+				if (Date.now() < this.suppressPreviewScrollUntil) {
+					return;
+				}
+
+				const line = Number(message.line);
+
+				if (!Number.isFinite(line) || line < 1) {
+					return;
+				}
+
+				this.syncEditorToPreview(line);
 			},
 			null,
 			this.disposables
@@ -276,6 +319,65 @@ export class DevSpecPreviewPanel {
 		}
 	}
 
+	private syncPreviewToEditor(editor: vscode.TextEditor): void {
+		const config = vscode.workspace.getConfiguration("devspecMarkdown");
+		const enabled = config.get<boolean>("previewScrollSync") ?? true;
+
+		if (!enabled) {
+			return;
+		}
+
+		const visibleRange = editor.visibleRanges[0];
+
+		if (!visibleRange) {
+			return;
+		}
+
+		const line = visibleRange.start.line + 1;
+
+		if (line === this.lastEditorSyncLine) {
+			return;
+		}
+
+		this.lastEditorSyncLine = line;
+		this.suppressPreviewScrollUntil = Date.now() + 250;
+
+		void this.panel.webview.postMessage({
+			type: "scrollToLine",
+			line
+		});
+	}
+
+	private syncEditorToPreview(line: number): void {
+		const config = vscode.workspace.getConfiguration("devspecMarkdown");
+		const enabled = config.get<boolean>("previewScrollSync") ?? true;
+
+		if (!enabled) {
+			return;
+		}
+
+		const editor = vscode.window.visibleTextEditors.find(
+			(candidate) => candidate.document.uri.toString() === this.document.uri.toString()
+		);
+
+		if (!editor) {
+			return;
+		}
+
+		const targetLine = Math.max(0, Math.min(editor.document.lineCount - 1, line - 1));
+
+		if (targetLine === this.lastPreviewSyncLine) {
+			return;
+		}
+
+		this.lastPreviewSyncLine = targetLine;
+		this.suppressEditorScrollUntil = Date.now() + 250;
+
+		const range = new vscode.Range(targetLine, 0, targetLine, 0);
+
+		editor.revealRange(range, vscode.TextEditorRevealType.AtTop);
+	}
+
 	/**
 	 * Cleans up the panel instance:
 	 * - Removes this panel from the static {@link DevSpecPreviewPanel.panels} map.
@@ -350,18 +452,119 @@ function prepareInitialPreviewHtml(
 		"</body>",
 		`<script nonce="${nonce}">
 (function () {
+  const vscode = acquireVsCodeApi();
   const content = document.getElementById("devspec-content");
   const fileTitle = document.getElementById("devspec-preview-file-title");
+
+  let programmaticScroll = false;
+  let scrollTimer = 0;
+
+  function getScrollTop() {
+    return document.documentElement.scrollTop || document.body.scrollTop || 0;
+  }
+
+  function getSourceElements() {
+    if (!content) {
+      return [];
+    }
+
+    return Array.from(content.querySelectorAll("[data-source-line]"));
+  }
+
+  function findElementForLine(line) {
+    const elements = getSourceElements();
+
+    if (elements.length === 0) {
+      return null;
+    }
+
+    let best = elements[0];
+
+    for (const element of elements) {
+      const currentLine = Number(element.getAttribute("data-source-line"));
+
+      if (!Number.isFinite(currentLine)) {
+        continue;
+      }
+
+      if (currentLine <= line) {
+        best = element;
+      } else {
+        break;
+      }
+    }
+
+    return best;
+  }
+
+  function findCurrentSourceLine() {
+    const elements = getSourceElements();
+
+    if (elements.length === 0) {
+      return 1;
+    }
+
+    const top = getScrollTop();
+    let bestLine = 1;
+    let bestDistance = Number.POSITIVE_INFINITY;
+
+    for (const element of elements) {
+      const rect = element.getBoundingClientRect();
+      const absoluteTop = rect.top + top;
+      const distance = Math.abs(absoluteTop - top - 24);
+
+      if (distance < bestDistance) {
+        const line = Number(element.getAttribute("data-source-line"));
+
+        if (Number.isFinite(line)) {
+          bestLine = line;
+          bestDistance = distance;
+        }
+      }
+    }
+
+    return bestLine;
+  }
+
+  function scrollToSourceLine(line) {
+    const element = findElementForLine(Number(line));
+
+    if (!element) {
+      return;
+    }
+
+    programmaticScroll = true;
+
+    const top = element.getBoundingClientRect().top + getScrollTop() - 16;
+
+    window.scrollTo({
+      top,
+      behavior: "auto"
+    });
+
+    window.setTimeout(function () {
+      programmaticScroll = false;
+    }, 250);
+  }
 
   window.addEventListener("message", function (event) {
     const message = event.data;
 
-    if (!message || message.type !== "update" || !content) {
+    if (!message) {
+      return;
+    }
+
+    if (message.type === "scrollToLine") {
+      scrollToSourceLine(message.line);
+      return;
+    }
+
+    if (message.type !== "update" || !content) {
       return;
     }
 
     const maxScrollBefore = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
-    const scrollRatio = document.documentElement.scrollTop / maxScrollBefore;
+    const scrollRatio = getScrollTop() / maxScrollBefore;
 
     content.innerHTML = message.bodyHtml || "";
 
@@ -371,9 +574,24 @@ function prepareInitialPreviewHtml(
 
     requestAnimationFrame(function () {
       const maxScrollAfter = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
-      document.documentElement.scrollTop = scrollRatio * maxScrollAfter;
+      window.scrollTo(0, scrollRatio * maxScrollAfter);
     });
   });
+
+  window.addEventListener("scroll", function () {
+    if (programmaticScroll) {
+      return;
+    }
+
+    window.clearTimeout(scrollTimer);
+
+    scrollTimer = window.setTimeout(function () {
+      vscode.postMessage({
+        type: "previewDidScroll",
+        line: findCurrentSourceLine()
+      });
+    }, 80);
+  }, { passive: true });
 }());
 </script>
 </body>`
