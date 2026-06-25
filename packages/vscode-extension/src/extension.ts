@@ -540,6 +540,7 @@ function findBrowserPath(config?: vscode.WorkspaceConfiguration): string | undef
 
 	const envBrowser =
 		existingFile(nodeProcess.env.DEVSPEC_BROWSER_PATH) ??
+		existingFile(nodeProcess.env.DEVSPEC_CHROME_PATH) ??
 		existingFile(nodeProcess.env.PUPPETEER_EXECUTABLE_PATH) ??
 		existingFile(nodeProcess.env.CHROME_PATH) ??
 		existingFile(nodeProcess.env.EDGE_PATH);
@@ -621,8 +622,9 @@ function getKnownBrowserPaths(): string[] {
 		candidates.push(
 			"/usr/bin/microsoft-edge",
 			"/usr/bin/microsoft-edge-stable",
-			"/usr/bin/google-chrome",
 			"/usr/bin/google-chrome-stable",
+			"/usr/bin/google-chrome",
+			"/opt/google/chrome/chrome",
 			"/usr/bin/chromium",
 			"/usr/bin/chromium-browser",
 			"/usr/bin/brave-browser",

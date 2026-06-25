@@ -404,6 +404,7 @@ function createDebianInstallPlan(
 function createAmazonLinuxInstallPlan(missing: DependencyStatus[]): InstallPlan {
     const requiredPackages: string[] = [];
     const optionalPackages: string[] = [];
+    const installChrome = hasMissing(missing, "browser");
 
     if (hasMissing(missing, "java")) {
         requiredPackages.push("java-17-amazon-corretto-headless");
@@ -426,19 +427,26 @@ function createAmazonLinuxInstallPlan(missing: DependencyStatus[]): InstallPlan 
         requiredPackages.push("graphviz");
     }
 
-    if (hasMissing(missing, "browser")) {
-        optionalPackages.push("chromium");
+    // Important:
+    // Amazon Linux 2023 usually does NOT provide chromium in the default dnf repo.
+    // So we install Google Chrome RPM instead of optionalPackages.push("chromium").
+    if (installChrome) {
+        requiredPackages.push("curl", "nss", "xdg-utils");
     }
 
     return {
-        manager: "dnf",
+        manager: installChrome ? "dnf + Google Chrome RPM" : "dnf",
         packages: [...requiredPackages, ...optionalPackages],
-        command: createDnfInstallCommand(requiredPackages, optionalPackages),
+        command: createAmazonLinuxInstallCommand(
+            requiredPackages,
+            optionalPackages,
+            installChrome
+        ),
         notes: [
             "Used for Amazon Linux 2023 when /etc/os-release has ID=amzn.",
-            "Amazon Linux 2023 uses dnf.",
-            "Chromium may not be available in every Amazon Linux 2023 repository, so it is installed only if available.",
-            "If browser installation is skipped, install Chrome/Chromium manually or set devspecMarkdown.browserPath."
+            "Amazon Linux 2023 usually does not provide Chromium in the default repositories.",
+            "When the browser is missing, this installer downloads and installs Google Chrome RPM inside the dev-container.",
+            "PDF export runs inside the VS Code remote/dev-container environment, so the browser must exist inside that environment."
         ]
     };
 }
@@ -685,6 +693,45 @@ function createDnfInstallCommand(requiredPackages: string[], optionalPackages: s
     ].join(" && ");
 }
 
+function createAmazonLinuxInstallCommand(
+    requiredPackages: string[],
+    optionalPackages: string[],
+    installChrome: boolean
+): string {
+    const manager = commandExists("dnf") ? "dnf" : "yum";
+
+    const commands = [
+        "set -e",
+        createSudoShellSnippet(),
+        `DNF="${manager}"`,
+        "$SUDO $DNF makecache || true",
+        `REQUIRED_PACKAGES="${requiredPackages.join(" ")}"`,
+        `OPTIONAL_PACKAGES="${optionalPackages.join(" ")}"`,
+        "INSTALL_PACKAGES=\"$REQUIRED_PACKAGES\"",
+        "for package_name in $OPTIONAL_PACKAGES; do if $DNF list --available \"$package_name\" >/dev/null 2>&1 || rpm -q \"$package_name\" >/dev/null 2>&1; then INSTALL_PACKAGES=\"$INSTALL_PACKAGES $package_name\"; else echo \"Skipping optional package because it is not available: $package_name\"; fi; done",
+        "if [ -n \"$(echo $INSTALL_PACKAGES | xargs)\" ]; then $SUDO $DNF install -y $INSTALL_PACKAGES; fi"
+    ];
+
+    if (installChrome) {
+        commands.push(
+            "$SUDO rpm --import https://dl.google.com/linux/linux_signing_key.pub || true",
+            "CHROME_RPM=$(mktemp /tmp/google-chrome-stable.XXXXXX.rpm)",
+            "curl -L -o $CHROME_RPM https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm",
+            "$SUDO $DNF install -y $CHROME_RPM",
+            "rm -f $CHROME_RPM",
+            "google-chrome-stable --version",
+            "echo \"Chrome path: $(command -v google-chrome-stable)\""
+        );
+    }
+
+    commands.push(
+        "$SUDO ldconfig || true",
+        "echo \"DevSpec Markdown dependencies installed. Reload VS Code, then run DevSpec: Check System Dependencies.\""
+    );
+
+    return commands.join(" && ");
+}
+
 function createApkInstallCommand(packages: string[]): string {
     return [
         "set -e",
@@ -835,6 +882,11 @@ function unquoteOsReleaseValue(value: string): string {
 
 function browserExists(osInfo: OsInfo): boolean {
     if (
+        fileExists(nodeProcess.env.DEVSPEC_BROWSER_PATH ?? "") ||
+        fileExists(nodeProcess.env.DEVSPEC_CHROME_PATH ?? "") ||
+        fileExists(nodeProcess.env.PUPPETEER_EXECUTABLE_PATH ?? "") ||
+        fileExists(nodeProcess.env.CHROME_PATH ?? "") ||
+        fileExists(nodeProcess.env.EDGE_PATH ?? "") ||
         commandExists("chromium") ||
         commandExists("chromium-browser") ||
         commandExists("google-chrome") ||
@@ -847,6 +899,20 @@ function browserExists(osInfo: OsInfo): boolean {
         commandExists("brave")
     ) {
         return true;
+    }
+
+    if (osInfo.platform === "linux") {
+        return [
+            "/usr/bin/google-chrome-stable",
+            "/usr/bin/google-chrome",
+            "/opt/google/chrome/chrome",
+            "/usr/bin/chromium",
+            "/usr/bin/chromium-browser",
+            "/usr/bin/microsoft-edge",
+            "/usr/bin/microsoft-edge-stable",
+            "/usr/bin/brave-browser",
+            "/snap/bin/chromium"
+        ].some((candidate) => fileExists(candidate));
     }
 
     if (osInfo.platform === "win32") {
