@@ -544,7 +544,6 @@ function prepareInitialPreviewHtml(
 	output = output.replace(
 		"</head>",
 		`<style>
-
 			.devspec-preview-toolbar {
 				display: none !important;
 			}
@@ -556,6 +555,10 @@ function prepareInitialPreviewHtml(
 
 			body {
 				overflow-x: auto;
+			}
+			
+			.devspec-preview-zoom-toolbar {
+				display: none !important;
 			}
 
 			#devspec-preview-page-viewport {
@@ -626,13 +629,7 @@ function prepareInitialPreviewHtml(
 
 	output = output.replace(
 		"</body>",
-		`<div class="devspec-preview-zoom-toolbar" aria-label="Preview zoom controls">
-			<button id="devspec-preview-zoom-out" title="Zoom out">−</button>
-			<button id="devspec-preview-zoom-reset" title="Reset zoom">100%</button>
-			<button id="devspec-preview-zoom-in" title="Zoom in">+</button>
-		</div>
-
-		<script nonce="${nonce}">
+		` <script nonce="${nonce}">
 		(function () {
 			const vscode = acquireVsCodeApi();
 			const content = document.getElementById("devspec-content");
