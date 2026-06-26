@@ -97,6 +97,24 @@ export function activate(context: vscode.ExtensionContext): void {
 		})
 	);
 
+	context.subscriptions.push(
+		vscode.commands.registerCommand("devspecMarkdown.previewZoomIn", () => {
+			DevSpecPreviewPanel.zoomActivePreviewIn();
+		})
+	);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand("devspecMarkdown.previewZoomOut", () => {
+			DevSpecPreviewPanel.zoomActivePreviewOut();
+		})
+	);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand("devspecMarkdown.previewZoomReset", () => {
+			DevSpecPreviewPanel.resetActivePreviewZoom();
+		})
+	);
+
 	// command: Export HTML
 	context.subscriptions.push(
 		vscode.commands.registerCommand("devspecMarkdown.exportHtml", async () => {

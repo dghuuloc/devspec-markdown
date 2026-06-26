@@ -47,6 +47,12 @@ export class DevSpecPreviewPanel {
 	private lastEditorSyncLine = -1;
 	private lastPreviewSyncLine = -1;
 
+	private previewZoom = 1;
+	private static activePanel: DevSpecPreviewPanel | undefined;
+	private static readonly minPreviewZoom = 0.5;
+	private static readonly maxPreviewZoom = 3;
+	private static readonly previewZoomStep = 0.1;
+
 	/**
 	 * Creates a new {@link DevSpecPreviewPanel} for `document`, or reveals
 	 * the existing one if it is already open.
@@ -106,10 +112,24 @@ export class DevSpecPreviewPanel {
 		this.panel = panel;
 		this.document = document;
 
+		const config = vscode.workspace.getConfiguration("devspecMarkdown");
+		this.previewZoom = clampPreviewZoom(config.get<number>("previewZoomLevel") ?? 1);
+		DevSpecPreviewPanel.activePanel = this;
+
 		// Initial render is allowed to render PlantUML once.
 		void this.update(document, true);
 
 		this.panel.onDidDispose(() => this.dispose(), null, this.disposables);
+
+		this.panel.onDidChangeViewState(
+			(event) => {
+				if (event.webviewPanel.active || event.webviewPanel.visible) {
+					DevSpecPreviewPanel.activePanel = this;
+				}
+			},
+			null,
+			this.disposables
+		);
 
 		vscode.workspace.onDidChangeTextDocument(
 			(event) => {
@@ -149,7 +169,36 @@ export class DevSpecPreviewPanel {
 
 		this.panel.webview.onDidReceiveMessage(
 			(message) => {
-				if (!message || message.type !== "previewDidScroll") {
+				if (!message || typeof message.type !== "string") {
+					return;
+				}
+
+				if (message.type === "previewZoomIn") {
+					this.zoomIn();
+					return;
+				}
+
+				if (message.type === "previewZoomOut") {
+					this.zoomOut();
+					return;
+				}
+
+				if (message.type === "previewZoomReset") {
+					this.resetZoom();
+					return;
+				}
+
+				if (message.type === "previewZoomSet") {
+					const zoom = Number(message.zoom);
+
+					if (Number.isFinite(zoom)) {
+						this.setPreviewZoom(zoom);
+					}
+
+					return;
+				}
+
+				if (message.type !== "previewDidScroll") {
 					return;
 				}
 
@@ -168,6 +217,7 @@ export class DevSpecPreviewPanel {
 			null,
 			this.disposables
 		);
+
 	}
 
 	/**
@@ -284,7 +334,8 @@ export class DevSpecPreviewPanel {
 				this.panel.webview.html = prepareInitialPreviewHtml(
 					result.html,
 					this.panel.webview,
-					result.bodyHtml
+					result.bodyHtml,
+					this.previewZoom
 				);
 				this.initialized = true;
 				return;
@@ -378,6 +429,60 @@ export class DevSpecPreviewPanel {
 		editor.revealRange(range, vscode.TextEditorRevealType.AtTop);
 	}
 
+	public static zoomActivePreviewIn(): void {
+		const panel = DevSpecPreviewPanel.activePanel;
+
+		if (!panel) {
+			vscode.window.showWarningMessage("Open a DevSpec preview first.");
+			return;
+		}
+
+		panel.zoomIn();
+	}
+
+	public static zoomActivePreviewOut(): void {
+		const panel = DevSpecPreviewPanel.activePanel;
+
+		if (!panel) {
+			vscode.window.showWarningMessage("Open a DevSpec preview first.");
+			return;
+		}
+
+		panel.zoomOut();
+	}
+
+	public static resetActivePreviewZoom(): void {
+		const panel = DevSpecPreviewPanel.activePanel;
+
+		if (!panel) {
+			vscode.window.showWarningMessage("Open a DevSpec preview first.");
+			return;
+		}
+
+		panel.resetZoom();
+	}
+
+	private zoomIn(): void {
+		this.setPreviewZoom(this.previewZoom + DevSpecPreviewPanel.previewZoomStep);
+	}
+
+	private zoomOut(): void {
+		this.setPreviewZoom(this.previewZoom - DevSpecPreviewPanel.previewZoomStep);
+	}
+
+	private resetZoom(): void {
+		this.setPreviewZoom(1);
+	}
+
+	private setPreviewZoom(value: number): void {
+		this.previewZoom = clampPreviewZoom(value);
+
+		void this.panel.webview.postMessage({
+			type: "setZoom",
+			zoom: this.previewZoom
+		});
+	}
+
 	/**
 	 * Cleans up the panel instance:
 	 * - Removes this panel from the static {@link DevSpecPreviewPanel.panels} map.
@@ -387,6 +492,10 @@ export class DevSpecPreviewPanel {
 	 * Called automatically when the webview panel fires `onDidDispose`.
 	 */
 	private dispose(): void {
+		if (DevSpecPreviewPanel.activePanel === this) {
+			DevSpecPreviewPanel.activePanel = undefined;
+		}
+
 		DevSpecPreviewPanel.panels.delete(this.document.uri.toString());
 
 		if (this.updateTimer) {
@@ -424,12 +533,62 @@ export class DevSpecPreviewPanel {
 function prepareInitialPreviewHtml(
 	html: string,
 	webview: vscode.Webview,
-	initialBodyHtml: string
+	initialBodyHtml: string,
+	initialZoom: number
 ): string {
 	const nonce = createNonce();
 	const csp = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} data:; style-src 'unsafe-inline' ${webview.cspSource}; script-src 'nonce-${nonce}';">`;
 
 	let output = html.replace("<head>", `<head>\n  ${csp}`);
+
+	output = output.replace(
+		"</head>",
+		`<style>
+			.devspec-preview-zoom-toolbar {
+				position: fixed;
+				top: 12px;
+				right: 16px;
+				z-index: 9999;
+				display: flex;
+				align-items: center;
+				gap: 4px;
+				padding: 6px;
+				border: 1px solid rgba(148, 163, 184, 0.45);
+				border-radius: 999px;
+				background: rgba(255, 255, 255, 0.92);
+				box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+				backdrop-filter: blur(8px);
+				font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+			}
+
+			.devspec-preview-zoom-toolbar button {
+				min-width: 32px;
+				height: 28px;
+				border: 1px solid rgba(148, 163, 184, 0.55);
+				border-radius: 999px;
+				background: #ffffff;
+				color: #0f172a;
+				font-size: 13px;
+				font-weight: 700;
+				cursor: pointer;
+			}
+
+			.devspec-preview-zoom-toolbar button:hover {
+				background: #eff6ff;
+				border-color: #2563eb;
+			}
+
+			#devspec-preview-zoom-reset {
+				min-width: 54px;
+				font-size: 12px;
+			}
+
+			body {
+				overflow-x: auto;
+			}
+		</style>
+		</head>`
+	);
 
 	output = output.replace(
 		'<article class="markdown-body devspec-paper">',
@@ -450,151 +609,300 @@ function prepareInitialPreviewHtml(
 
 	output = output.replace(
 		"</body>",
-		`<script nonce="${nonce}">
-(function () {
-  const vscode = acquireVsCodeApi();
-  const content = document.getElementById("devspec-content");
-  const fileTitle = document.getElementById("devspec-preview-file-title");
+		`<div class="devspec-preview-zoom-toolbar" aria-label="Preview zoom controls">
+			<button id="devspec-preview-zoom-out" title="Zoom out">−</button>
+			<button id="devspec-preview-zoom-reset" title="Reset zoom">100%</button>
+			<button id="devspec-preview-zoom-in" title="Zoom in">+</button>
+		</div>
 
-  let programmaticScroll = false;
-  let scrollTimer = 0;
+		<script nonce="${nonce}">
+		(function () {
+			const vscode = acquireVsCodeApi();
+			const content = document.getElementById("devspec-content");
+			const fileTitle = document.getElementById("devspec-preview-file-title");
+			const zoomInButton = document.getElementById("devspec-preview-zoom-in");
+			const zoomOutButton = document.getElementById("devspec-preview-zoom-out");
+			const zoomResetButton = document.getElementById("devspec-preview-zoom-reset");
 
-  function getScrollTop() {
-    return document.documentElement.scrollTop || document.body.scrollTop || 0;
-  }
+			let programmaticScroll = false;
+			let scrollTimer = 0;
+			let zoom = clampZoom(${JSON.stringify(clampPreviewZoom(initialZoom))});
+			let lastWheelZoomAt = 0;
+			let pendingZoomAnchor = null;
 
-  function getSourceElements() {
-    if (!content) {
-      return [];
-    }
+			function clampZoom(value) {
+				const numeric = Number(value);
 
-    return Array.from(content.querySelectorAll("[data-source-line]"));
-  }
+				if (!Number.isFinite(numeric)) {
+				return 1;
+				}
 
-  function findElementForLine(line) {
-    const elements = getSourceElements();
+				return Math.min(3, Math.max(0.5, Math.round(numeric * 10) / 10));
+			}
 
-    if (elements.length === 0) {
-      return null;
-    }
+			function applyZoom(value) {
+				const oldZoom = zoom;
+				const anchor = pendingZoomAnchor;
 
-    let best = elements[0];
+				zoom = clampZoom(value);
 
-    for (const element of elements) {
-      const currentLine = Number(element.getAttribute("data-source-line"));
+				if (content) {
+					content.style.zoom = String(zoom);
+				}
 
-      if (!Number.isFinite(currentLine)) {
-        continue;
-      }
+				if (zoomResetButton) {
+					zoomResetButton.textContent = Math.round(zoom * 100) + "%";
+					zoomResetButton.title = "Reset zoom (" + Math.round(zoom * 100) + "%)";
+				}
 
-      if (currentLine <= line) {
-        best = element;
-      } else {
-        break;
-      }
-    }
+				vscode.setState({ zoom });
 
-    return best;
-  }
+				if (anchor && oldZoom > 0) {
+					const scale = zoom / oldZoom;
 
-  function findCurrentSourceLine() {
-    const elements = getSourceElements();
+					requestAnimationFrame(function () {
+					window.scrollTo({
+						left: anchor.scrollX * scale + anchor.clientX * (scale - 1),
+						top: anchor.scrollY * scale + anchor.clientY * (scale - 1),
+						behavior: "auto"
+					});
+				});
 
-    if (elements.length === 0) {
-      return 1;
-    }
+				pendingZoomAnchor = null;
+			}
+			}
 
-    const top = getScrollTop();
-    let bestLine = 1;
-    let bestDistance = Number.POSITIVE_INFINITY;
+			function getScrollTop() {
+				return document.documentElement.scrollTop || document.body.scrollTop || 0;
+			}
 
-    for (const element of elements) {
-      const rect = element.getBoundingClientRect();
-      const absoluteTop = rect.top + top;
-      const distance = Math.abs(absoluteTop - top - 24);
+			function getSourceElements() {
+				if (!content) {
+				return [];
+				}
 
-      if (distance < bestDistance) {
-        const line = Number(element.getAttribute("data-source-line"));
+				return Array.from(content.querySelectorAll("[data-source-line]"));
+			}
 
-        if (Number.isFinite(line)) {
-          bestLine = line;
-          bestDistance = distance;
-        }
-      }
-    }
+			function findElementForLine(line) {
+				const elements = getSourceElements();
 
-    return bestLine;
-  }
+				if (elements.length === 0) {
+				return null;
+				}
 
-  function scrollToSourceLine(line) {
-    const element = findElementForLine(Number(line));
+				let best = elements[0];
 
-    if (!element) {
-      return;
-    }
+				for (const element of elements) {
+				const currentLine = Number(element.getAttribute("data-source-line"));
 
-    programmaticScroll = true;
+				if (!Number.isFinite(currentLine)) {
+					continue;
+				}
 
-    const top = element.getBoundingClientRect().top + getScrollTop() - 16;
+				if (currentLine <= line) {
+					best = element;
+				} else {
+					break;
+				}
+				}
 
-    window.scrollTo({
-      top,
-      behavior: "auto"
-    });
+				return best;
+			}
 
-    window.setTimeout(function () {
-      programmaticScroll = false;
-    }, 250);
-  }
+			function findCurrentSourceLine() {
+				const elements = getSourceElements();
 
-  window.addEventListener("message", function (event) {
-    const message = event.data;
+				if (elements.length === 0) {
+				return 1;
+				}
 
-    if (!message) {
-      return;
-    }
+				const top = getScrollTop();
+				let bestLine = 1;
+				let bestDistance = Number.POSITIVE_INFINITY;
 
-    if (message.type === "scrollToLine") {
-      scrollToSourceLine(message.line);
-      return;
-    }
+				for (const element of elements) {
+				const rect = element.getBoundingClientRect();
+				const absoluteTop = rect.top + top;
+				const distance = Math.abs(absoluteTop - top - 24);
 
-    if (message.type !== "update" || !content) {
-      return;
-    }
+				if (distance < bestDistance) {
+					const line = Number(element.getAttribute("data-source-line"));
 
-    const maxScrollBefore = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
-    const scrollRatio = getScrollTop() / maxScrollBefore;
+					if (Number.isFinite(line)) {
+					bestLine = line;
+					bestDistance = distance;
+					}
+				}
+				}
 
-    content.innerHTML = message.bodyHtml || "";
+				return bestLine;
+			}
 
-    if (fileTitle && message.title) {
-      fileTitle.textContent = message.title;
-    }
+			function scrollToSourceLine(line) {
+				const element = findElementForLine(Number(line));
 
-    requestAnimationFrame(function () {
-      const maxScrollAfter = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
-      window.scrollTo(0, scrollRatio * maxScrollAfter);
-    });
-  });
+				if (!element) {
+				return;
+				}
 
-  window.addEventListener("scroll", function () {
-    if (programmaticScroll) {
-      return;
-    }
+				programmaticScroll = true;
 
-    window.clearTimeout(scrollTimer);
+				const top = element.getBoundingClientRect().top + getScrollTop() - 16;
 
-    scrollTimer = window.setTimeout(function () {
-      vscode.postMessage({
-        type: "previewDidScroll",
-        line: findCurrentSourceLine()
-      });
-    }, 80);
-  }, { passive: true });
-}());
-</script>
-</body>`
+				window.scrollTo({
+				top,
+				behavior: "auto"
+				});
+
+				window.setTimeout(function () {
+				programmaticScroll = false;
+				}, 250);
+			}
+
+			if (zoomInButton) {
+				zoomInButton.addEventListener("click", function () {
+				vscode.postMessage({ type: "previewZoomIn" });
+				});
+			}
+
+			if (zoomOutButton) {
+				zoomOutButton.addEventListener("click", function () {
+				vscode.postMessage({ type: "previewZoomOut" });
+				});
+			}
+
+			if (zoomResetButton) {
+				zoomResetButton.addEventListener("click", function () {
+				vscode.postMessage({ type: "previewZoomReset" });
+				});
+			}
+
+			window.addEventListener("keydown", function (event) {
+				const isZoomShortcut = event.ctrlKey || event.metaKey;
+
+				if (!isZoomShortcut) {
+					return;
+				}
+
+				if (event.key === "+" || event.key === "=") {
+					event.preventDefault();
+					vscode.postMessage({ type: "previewZoomIn" });
+					return;
+				}
+
+				if (event.key === "-") {
+					event.preventDefault();
+					vscode.postMessage({ type: "previewZoomOut" });
+					return;
+				}
+
+				if (event.key === "0") {
+					event.preventDefault();
+					vscode.postMessage({ type: "previewZoomReset" });
+				}
+			});
+
+			window.addEventListener("wheel", function (event) {
+				const isZoomGesture = event.ctrlKey || event.metaKey;
+
+				if (!isZoomGesture) {
+					return;
+				}
+
+				event.preventDefault();
+
+				const now = Date.now();
+
+				if (now - lastWheelZoomAt < 45) {
+					return;
+				}
+
+				lastWheelZoomAt = now;
+
+				const direction = event.deltaY < 0 ? 1 : -1;
+				const nextZoom = clampZoom(zoom + direction * 0.1);
+
+				if (nextZoom === zoom) {
+					return;
+				}
+
+				pendingZoomAnchor = {
+					clientX: event.clientX,
+					clientY: event.clientY,
+					scrollX: window.scrollX || document.documentElement.scrollLeft || 0,
+					scrollY: getScrollTop(),
+					oldZoom: zoom
+				};
+
+				vscode.postMessage({
+					type: "previewZoomSet",
+					zoom: nextZoom
+				});
+			}, { passive: false });
+
+			window.addEventListener("message", function (event) {
+				const message = event.data;
+
+				if (!message) {
+					return;
+				}
+
+				if (message.type === "setZoom") {
+					applyZoom(message.zoom);
+					return;
+				}
+
+				if (message.type === "scrollToLine") {
+					scrollToSourceLine(message.line);
+					return;
+				}
+
+				if (message.type !== "update" || !content) {
+					return;
+				}
+
+				const maxScrollBefore = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+				const scrollRatio = getScrollTop() / maxScrollBefore;
+
+				content.innerHTML = message.bodyHtml || "";
+				applyZoom(zoom);
+
+				if (fileTitle && message.title) {
+					fileTitle.textContent = message.title;
+				}
+
+				requestAnimationFrame(function () {
+					const maxScrollAfter = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+					window.scrollTo(0, scrollRatio * maxScrollAfter);
+				});
+			});
+
+			window.addEventListener("scroll", function () {
+				if (programmaticScroll) {
+					return;
+				}
+
+				window.clearTimeout(scrollTimer);
+
+				scrollTimer = window.setTimeout(function () {
+				vscode.postMessage({
+					type: "previewDidScroll",
+					line: findCurrentSourceLine()
+				});
+				}, 80);
+			}, { passive: true });
+
+			const restoredState = vscode.getState();
+
+			if (restoredState && typeof restoredState.zoom === "number") {
+				applyZoom(restoredState.zoom);
+			} else {
+				applyZoom(zoom);
+			}
+			}());
+		</script>
+		</body>`
 	);
 
 	return output;
@@ -616,25 +924,25 @@ function createErrorHtml(errorBody: string, webview: vscode.Webview): string {
 	const csp = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} data:; style-src 'unsafe-inline' ${webview.cspSource}; script-src 'nonce-${nonce}';">`;
 
 	return `<!doctype html>
-<html>
-<head>
-  ${csp}
-  <style>
-    body { font-family: Segoe UI, Arial, sans-serif; padding: 24px; }
-    pre { white-space: pre-wrap; background: #f6f8fa; padding: 12px; border: 1px solid #d0d7de; border-radius: 8px; }
-  </style>
-</head>
-<body>
-  <article id="devspec-content">${errorBody}</article>
-  <script nonce="${nonce}">
-    window.addEventListener("message", function (event) {
-      if (event.data && event.data.type === "update") {
-        document.getElementById("devspec-content").innerHTML = event.data.bodyHtml || "";
-      }
-    });
-  </script>
-</body>
-</html>`;
+	<html>
+		<head>
+		${csp}
+		<style>
+			body { font-family: Segoe UI, Arial, sans-serif; padding: 24px; }
+			pre { white-space: pre-wrap; background: #f6f8fa; padding: 12px; border: 1px solid #d0d7de; border-radius: 8px; }
+		</style>
+		</head>
+		<body>
+		<article id="devspec-content">${errorBody}</article>
+		<script nonce="${nonce}">
+			window.addEventListener("message", function (event) {
+			if (event.data && event.data.type === "update") {
+				document.getElementById("devspec-content").innerHTML = event.data.bodyHtml || "";
+			}
+			});
+		</script>
+		</body>
+	</html>`;
 }
 
 function resolveProjectRoot(document: vscode.TextDocument): string {
@@ -735,6 +1043,14 @@ function extractMarkdownTitle(markdown: string): string | undefined {
 		.trim();
 }
 
+function clampPreviewZoom(value: number): number {
+	if (!Number.isFinite(value)) {
+		return 1;
+	}
+
+	return Math.min(3, Math.max(0.5, Math.round(value * 10) / 10));
+}
+
 function getPlantUmlSecurityProfile(
 	config: vscode.WorkspaceConfiguration
 ): "SECURE" | "UNSECURE" {
@@ -743,6 +1059,6 @@ function getPlantUmlSecurityProfile(
 	if (value === "UNSECURE") {
 		return "UNSECURE";
 	}
-
+	
 	return "SECURE";
 }

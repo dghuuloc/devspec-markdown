@@ -2,7 +2,7 @@
     "name": "devspec-markdown-vscode",
     "displayName": "DevSpec Markdown",
     "description": "VS Code live preview for DevSpec Markdown with PlantUML, TOC, and PDF export.",
-    "version": "0.0.5",
+    "version": "0.0.6-beta",
     "publisher": "dghuuloc",
     "icon": "images/devspec-markdown-icon-256.png",
     "galleryBanner": {
@@ -69,6 +69,21 @@
             {
                 "command": "devspecMarkdown.resetDependencyPrompt",
                 "title": "DevSpec: Reset Dependency Prompt"
+            },
+            {
+                "command": "devspecMarkdown.previewZoomIn",
+                "title": "DevSpec: Preview Zoom In",
+                "icon": "$(zoom-in)"
+            },
+            {
+                "command": "devspecMarkdown.previewZoomOut",
+                "title": "DevSpec: Preview Zoom Out",
+                "icon": "$(zoom-out)"
+            },
+            {
+                "command": "devspecMarkdown.previewZoomReset",
+                "title": "DevSpec: Reset Preview Zoom",
+                "icon": "$(screen-normal)"
             }
         ],
         "menus": {
@@ -105,6 +120,15 @@
                 },
                 {
                     "command": "devspecMarkdown.resetDependencyPrompt"
+                },
+                {
+                    "command": "devspecMarkdown.previewZoomIn"
+                },
+                {
+                    "command": "devspecMarkdown.previewZoomOut"
+                },
+                {
+                    "command": "devspecMarkdown.previewZoomReset"
                 }
             ]
         },
@@ -169,6 +193,13 @@
                     "type": "boolean",
                     "default": true,
                     "description": "Synchronize scrolling between the Markdown editor and DevSpec preview."
+                },
+                "devspecMarkdown.previewZoomLevel": {
+                    "type": "number",
+                    "default": 1,
+                    "minimum": 0.5,
+                    "maximum": 3,
+                    "description": "Initial zoom level for the DevSpec Markdown preview. 1 means 100%, 1.5 means 150%."
                 }
             }
         },
@@ -184,6 +215,21 @@
                 "key": "ctrl+alt+v",
                 "mac": "cmd+alt+v",
                 "when": "editorLangId == markdown"
+            },
+            {
+                "command": "devspecMarkdown.previewZoomIn",
+                "key": "ctrl+alt+=",
+                "mac": "cmd+alt+="
+            },
+            {
+                "command": "devspecMarkdown.previewZoomOut",
+                "key": "ctrl+alt+-",
+                "mac": "cmd+alt+-"
+            },
+            {
+                "command": "devspecMarkdown.previewZoomReset",
+                "key": "ctrl+alt+0",
+                "mac": "cmd+alt+0"
             }
         ]
     },
