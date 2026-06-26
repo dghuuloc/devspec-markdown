@@ -92,6 +92,27 @@ Open a Markdown file, then run any of these commands from the Command Palette (`
 Commands are only available when a Markdown file is open in the active editor.
 
 ---
+## Preview Zoom and Navigation
+
+The DevSpec preview is designed for large engineering documents with wide tables and large PlantUML/Mermaid diagrams. The preview does not show a floating zoom toolbar; use mouse and keyboard gestures.
+
+| Gesture | Behavior |
+| --- | --- |
+| `Ctrl + mouse wheel` over normal text | Zoom the Markdown content |
+| `Ctrl + mouse wheel` over a diagram | Zoom only that diagram |
+| `Ctrl + Alt + mouse wheel` anywhere in the preview | Zoom the whole preview page wrapper like a PDF viewer |
+| `Ctrl + +` / `Ctrl + -` | Zoom content in / out |
+| `Ctrl + 0` | Reset content zoom to 100% |
+| `Ctrl + Alt + 0` | Reset page-wrapper zoom to 100% |
+
+On macOS, use `Cmd` where the shortcut uses `Ctrl`.
+
+### Choosing the right zoom mode
+Use **content zoom** when you want the document text and tables to become easier to read. Use **diagram zoom** when a single class diagram or sequence diagram is too small but the surrounding document is already readable. Use **page-wrapper zoom** when you want the entire preview surface to behave more like a PDF viewer page, including the document page, content, tables, and diagrams.
+
+Zoom state is preserved while the preview webview is alive. Reopening the preview starts from the configured `devspecMarkdown.previewZoomLevel`.
+
+---
 ## Document Attributes
 DevSpec Markdown reads AsciiDoc-style `:key: value` directives placed anywhere in the document (typically near the top). Directive lines are stripped before rendering — they never appear in the output.
 
