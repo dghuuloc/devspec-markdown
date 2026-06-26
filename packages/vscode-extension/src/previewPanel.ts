@@ -544,6 +544,16 @@ function prepareInitialPreviewHtml(
 	output = output.replace(
 		"</head>",
 		`<style>
+
+			.devspec-preview-toolbar {
+				display: none !important;
+			}
+
+			.devspec-preview-main {
+				padding-top: 0 !important;
+				margin-top: 0 !important;
+			}
+
 			body {
 				overflow-x: auto;
 			}

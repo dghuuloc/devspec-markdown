@@ -103,38 +103,32 @@ export function renderMarkdownToHtml(options: RenderMarkdownOptions): RenderMark
 	const bodyClass = options.viewMode === "preview" ? ' class="devspec-preview"' : "";
 	const documentBody = options.viewMode === "preview"
 		? `  <div class="devspec-preview-shell">
-    <header class="devspec-preview-toolbar">
-      <div class="devspec-preview-toolbar-title">
-        <strong>DevSpec Preview</strong>
-        <span>${escapeHtml(title)}</span>
-      </div>
-      <div class="devspec-preview-toolbar-meta">Markdown · PlantUML · PDF</div>
-    </header>
-    <main class="devspec-preview-main">
-      <article class="markdown-body devspec-paper">
-${bodyHtml}
-      </article>
-    </main>
-  </div>`
-		: `  <article class="markdown-body">
-${bodyHtml}
-  </article>`;
+		<main class="devspec-preview-main">
+		<article class="markdown-body devspec-paper">
+	${bodyHtml}
+		</article>
+		</main>
+	</div>`
+			: `  <article class="markdown-body">
+	${bodyHtml}
+	</article>`;
 
-	const html = `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>${escapeHtml(title)}</title>
-  <style>
-${css}
-  </style>
-</head>
-<body${bodyClass}>
-${documentBody}
-</body>
-</html>
-`;
+	const html = `
+	<!doctype html>
+	<html lang="en">
+		<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>${escapeHtml(title)}</title>
+		<style>
+		${css}
+		</style>
+		</head>
+		<body${bodyClass}>
+		${documentBody}
+		</body>
+	</html>
+	`;
 
 	return {
 		html,
