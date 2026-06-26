@@ -544,47 +544,34 @@ function prepareInitialPreviewHtml(
 	output = output.replace(
 		"</head>",
 		`<style>
-			.devspec-preview-zoom-toolbar {
-				position: fixed;
-				top: 12px;
-				right: 16px;
-				z-index: 9999;
-				display: flex;
-				align-items: center;
-				gap: 4px;
-				padding: 6px;
-				border: 1px solid rgba(148, 163, 184, 0.45);
-				border-radius: 999px;
-				background: rgba(255, 255, 255, 0.92);
-				box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
-				backdrop-filter: blur(8px);
-				font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-			}
-
-			.devspec-preview-zoom-toolbar button {
-				min-width: 32px;
-				height: 28px;
-				border: 1px solid rgba(148, 163, 184, 0.55);
-				border-radius: 999px;
-				background: #ffffff;
-				color: #0f172a;
-				font-size: 13px;
-				font-weight: 700;
-				cursor: pointer;
-			}
-
-			.devspec-preview-zoom-toolbar button:hover {
-				background: #eff6ff;
-				border-color: #2563eb;
-			}
-
-			#devspec-preview-zoom-reset {
-				min-width: 54px;
-				font-size: 12px;
-			}
-
 			body {
 				overflow-x: auto;
+			}
+
+			.markdown-body .plantuml-diagram,
+			.markdown-body .mermaid-diagram,
+			.markdown-body .diagram-block,
+			.markdown-body figure.diagram-block {
+				overflow: auto !important;
+			}
+
+			.markdown-body .devspec-diagram-zoomed {
+				text-align: left !important;
+			}
+
+			.markdown-body .devspec-diagram-zoomed img,
+			.markdown-body .devspec-diagram-zoomed svg {
+				max-width: none !important;
+				margin-left: 0 !important;
+				margin-right: 0 !important;
+			}
+
+			.markdown-body .plantuml-diagram:hover,
+			.markdown-body .mermaid-diagram:hover,
+			.markdown-body .diagram-block:hover,
+			.markdown-body figure.diagram-block:hover {
+				outline: 1px dashed rgba(37, 99, 235, 0.45);
+				outline-offset: 4px;
 			}
 		</style>
 		</head>`
@@ -620,9 +607,6 @@ function prepareInitialPreviewHtml(
 			const vscode = acquireVsCodeApi();
 			const content = document.getElementById("devspec-content");
 			const fileTitle = document.getElementById("devspec-preview-file-title");
-			const zoomInButton = document.getElementById("devspec-preview-zoom-in");
-			const zoomOutButton = document.getElementById("devspec-preview-zoom-out");
-			const zoomResetButton = document.getElementById("devspec-preview-zoom-reset");
 
 			let programmaticScroll = false;
 			let scrollTimer = 0;
@@ -648,11 +632,6 @@ function prepareInitialPreviewHtml(
 
 				if (content) {
 					content.style.zoom = String(zoom);
-				}
-
-				if (zoomResetButton) {
-					zoomResetButton.textContent = Math.round(zoom * 100) + "%";
-					zoomResetButton.title = "Reset zoom (" + Math.round(zoom * 100) + "%)";
 				}
 
 				vscode.setState({ zoom });
@@ -760,22 +739,80 @@ function prepareInitialPreviewHtml(
 				}, 250);
 			}
 
-			if (zoomInButton) {
-				zoomInButton.addEventListener("click", function () {
-				vscode.postMessage({ type: "previewZoomIn" });
-				});
+			function findZoomableDiagram(target) {
+				if (!(target instanceof Element)) {
+					return null;
+				}
+
+				const diagram = target.closest(
+					".plantuml-diagram, .mermaid-diagram, .diagram-block, figure.diagram-block"
+				);
+
+				if (!diagram) {
+					return null;
+				}
+
+				const graphic = diagram.querySelector("img.plantuml-svg-image, svg, img");
+
+				if (!graphic) {
+					return null;
+				}
+
+				return diagram;
 			}
 
-			if (zoomOutButton) {
-				zoomOutButton.addEventListener("click", function () {
-				vscode.postMessage({ type: "previewZoomOut" });
-				});
+			function getDiagramGraphic(diagram) {
+				return diagram.querySelector("img.plantuml-svg-image, svg, img");
 			}
 
-			if (zoomResetButton) {
-				zoomResetButton.addEventListener("click", function () {
-				vscode.postMessage({ type: "previewZoomReset" });
-				});
+			function getDiagramZoom(diagram) {
+				const value = Number(diagram.getAttribute("data-devspec-diagram-zoom"));
+
+				if (!Number.isFinite(value) || value <= 0) {
+					return 1;
+				}
+
+				return value;
+			}
+
+			function getDiagramBaseWidth(graphic) {
+				const saved = Number(graphic.getAttribute("data-devspec-base-width"));
+
+				if (Number.isFinite(saved) && saved > 0) {
+					return saved;
+				}
+
+				const rect = graphic.getBoundingClientRect();
+				const baseWidth = Math.max(1, rect.width);
+
+				graphic.setAttribute("data-devspec-base-width", String(baseWidth));
+
+				return baseWidth;
+			}
+
+			function applyDiagramZoom(diagram, value) {
+				const graphic = getDiagramGraphic(diagram);
+
+				if (!graphic) {
+					return;
+				}
+
+				const nextZoom = clampZoom(value);
+				const baseWidth = getDiagramBaseWidth(graphic);
+
+				diagram.classList.add("devspec-diagram-zoomed");
+				diagram.setAttribute("data-devspec-diagram-zoom", String(nextZoom));
+
+				graphic.style.maxWidth = "none";
+				graphic.style.width = Math.round(baseWidth * nextZoom) + "px";
+				graphic.style.height = "auto";
+
+				if (nextZoom === 1) {
+					diagram.classList.remove("devspec-diagram-zoomed");
+					graphic.style.maxWidth = "";
+					graphic.style.width = "";
+					graphic.style.height = "";
+				}
 			}
 
 			window.addEventListener("keydown", function (event) {
@@ -821,6 +858,17 @@ function prepareInitialPreviewHtml(
 				lastWheelZoomAt = now;
 
 				const direction = event.deltaY < 0 ? 1 : -1;
+
+				const diagram = findZoomableDiagram(event.target);
+
+				if (diagram) {
+					const currentDiagramZoom = getDiagramZoom(diagram);
+					const nextDiagramZoom = clampZoom(currentDiagramZoom + direction * 0.1);
+
+					applyDiagramZoom(diagram, nextDiagramZoom);
+					return;
+				}
+
 				const nextZoom = clampZoom(zoom + direction * 0.1);
 
 				if (nextZoom === zoom) {
@@ -1059,6 +1107,6 @@ function getPlantUmlSecurityProfile(
 	if (value === "UNSECURE") {
 		return "UNSECURE";
 	}
-	
+
 	return "SECURE";
 }
