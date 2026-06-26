@@ -561,6 +561,26 @@ function prepareInitialPreviewHtml(
 				display: none !important;
 			}
 
+			html.devspec-middle-dragging,
+			html.devspec-middle-dragging * {
+				cursor: grabbing !important;
+				user-select: none !important;
+			}
+
+			.markdown-body .plantuml-diagram,
+			.markdown-body .mermaid-diagram,
+			.markdown-body .diagram-block,
+			.markdown-body figure.diagram-block {
+				cursor: grab;
+			}
+
+			html.devspec-middle-dragging .plantuml-diagram,
+			html.devspec-middle-dragging .mermaid-diagram,
+			html.devspec-middle-dragging .diagram-block,
+			html.devspec-middle-dragging figure.diagram-block {
+				cursor: grabbing !important;
+			}
+
 			#devspec-preview-page-viewport {
 				box-sizing: border-box;
 				width: 100%;
@@ -643,6 +663,7 @@ function prepareInitialPreviewHtml(
 			let lastWheelZoomAt = 0;
 			let pendingZoomAnchor = null;
 			let pendingPageZoomAnchor = null;
+			let middleDragPan = null;
 
 			function clampZoom(value) {
 				const numeric = Number(value);
@@ -702,7 +723,7 @@ function prepareInitialPreviewHtml(
 				if (pageWrapper) {
 					pageWrapper.style.zoom = String(pageZoom);
 				}
-
+i
 				saveZoomState();
 
 				restoreScrollAroundAnchor(anchor, oldPageZoom, pageZoom);
@@ -711,6 +732,78 @@ function prepareInitialPreviewHtml(
 
 			function getScrollTop() {
 				return document.documentElement.scrollTop || document.body.scrollTop || 0;
+			}
+
+			function getScrollLeft() {
+				return window.scrollX || document.documentElement.scrollLeft || document.body.scrollLeft || 0;
+			}
+
+			function isScrollableElement(element) {
+				if (!element) {
+					return false;
+				}
+
+				return (
+					element.scrollWidth > element.clientWidth + 1 ||
+					element.scrollHeight > element.clientHeight + 1
+				);
+			}
+
+			function findPanTarget(target) {
+				if (target instanceof Element) {
+					const diagram = target.closest(
+						".plantuml-diagram, .mermaid-diagram, .diagram-block, figure.diagram-block"
+					);
+
+					if (diagram && isScrollableElement(diagram)) {
+						return {
+							type: "element",
+							element: diagram
+						};
+					}
+				}
+
+				return {
+					type: "window",
+					element: null
+				};
+			}
+
+			function readPanScroll(target) {
+				if (target.type === "element" && target.element) {
+					return {
+						left: target.element.scrollLeft,
+						top: target.element.scrollTop
+					};
+				}
+
+				return {
+					left: getScrollLeft(),
+					top: getScrollTop()
+				};
+			}
+
+			function writePanScroll(target, left, top) {
+				if (target.type === "element" && target.element) {
+					target.element.scrollLeft = left;
+					target.element.scrollTop = top;
+					return;
+				}
+
+				window.scrollTo({
+					left,
+					top,
+					behavior: "auto"
+				});
+			}
+
+			function stopMiddleDragPan() {
+				if (!middleDragPan) {
+					return;
+				}
+
+				middleDragPan = null;
+				document.documentElement.classList.remove("devspec-middle-dragging");
 			}
 
 			function getSourceElements() {
@@ -977,6 +1070,73 @@ function prepareInitialPreviewHtml(
 					zoom: nextZoom
 				});
 			}, { passive: false });
+
+
+			window.addEventListener("mousedown", function (event) {
+				if (event.button !== 1) {
+					return;
+				}
+
+				event.preventDefault();
+				event.stopPropagation();
+
+				const target = findPanTarget(event.target);
+				const scroll = readPanScroll(target);
+
+				middleDragPan = {
+					target,
+					startX: event.clientX,
+					startY: event.clientY,
+					startLeft: scroll.left,
+					startTop: scroll.top,
+					moved: false
+				};
+
+				document.documentElement.classList.add("devspec-middle-dragging");
+			}, { capture: true });
+
+			window.addEventListener("mousemove", function (event) {
+				if (!middleDragPan) {
+					return;
+				}
+
+				event.preventDefault();
+
+				const deltaX = event.clientX - middleDragPan.startX;
+				const deltaY = event.clientY - middleDragPan.startY;
+
+				if (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2) {
+					middleDragPan.moved = true;
+				}
+
+				writePanScroll(
+					middleDragPan.target,
+					middleDragPan.startLeft - deltaX,
+					middleDragPan.startTop - deltaY
+				);
+			}, { capture: true });
+
+			window.addEventListener("mouseup", function (event) {
+				if (event.button !== 1) {
+					return;
+				}
+
+				event.preventDefault();
+				event.stopPropagation();
+
+				stopMiddleDragPan();
+			}, { capture: true });
+
+			window.addEventListener("blur", function () {
+				stopMiddleDragPan();
+			});
+
+			window.addEventListener("auxclick", function (event) {
+				if (event.button === 1) {
+					event.preventDefault();
+					event.stopPropagation();
+				}
+			}, { capture: true });
 
 			window.addEventListener("message", function (event) {
 				const message = event.data;
