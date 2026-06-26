@@ -548,6 +548,20 @@ function prepareInitialPreviewHtml(
 				overflow-x: auto;
 			}
 
+			#devspec-preview-page-viewport {
+				box-sizing: border-box;
+				width: 100%;
+				overflow: visible;
+			}
+
+			#devspec-preview-page-wrapper {
+				box-sizing: border-box;
+				width: fit-content;
+				min-width: 100%;
+				margin: 0 auto;
+				transform: none !important;
+			}
+
 			.markdown-body .plantuml-diagram,
 			.markdown-body .mermaid-diagram,
 			.markdown-body .diagram-block,
@@ -591,7 +605,13 @@ function prepareInitialPreviewHtml(
 	// the shell stable even if the template changes later.
 	output = output.replace(
 		/<article id="devspec-content" class="markdown-body devspec-paper">[\s\S]*?<\/article>/,
-		`<article id="devspec-content" class="markdown-body devspec-paper">\n${initialBodyHtml}\n      </article>`
+		`<div id="devspec-preview-page-viewport">
+		<div id="devspec-preview-page-wrapper">
+		<article id="devspec-content" class="markdown-body devspec-paper">
+			${initialBodyHtml}
+		</article>
+		</div>
+		</div>`
 	);
 
 	output = output.replace(
@@ -606,13 +626,16 @@ function prepareInitialPreviewHtml(
 		(function () {
 			const vscode = acquireVsCodeApi();
 			const content = document.getElementById("devspec-content");
+			const pageWrapper = document.getElementById("devspec-preview-page-wrapper");
 			const fileTitle = document.getElementById("devspec-preview-file-title");
 
 			let programmaticScroll = false;
 			let scrollTimer = 0;
 			let zoom = clampZoom(${JSON.stringify(clampPreviewZoom(initialZoom))});
+			let pageZoom = 1;
 			let lastWheelZoomAt = 0;
 			let pendingZoomAnchor = null;
+			let pendingPageZoomAnchor = null;
 
 			function clampZoom(value) {
 				const numeric = Number(value);
@@ -622,6 +645,29 @@ function prepareInitialPreviewHtml(
 				}
 
 				return Math.min(3, Math.max(0.5, Math.round(numeric * 10) / 10));
+			}
+
+			function saveZoomState() {
+				vscode.setState({
+					zoom: zoom,
+					pageZoom: pageZoom
+				});
+			}
+
+			function restoreScrollAroundAnchor(anchor, oldValue, newValue) {
+				if (!anchor || oldValue <= 0) {
+					return;
+				}
+
+				const scale = newValue / oldValue;
+
+				requestAnimationFrame(function () {
+					window.scrollTo({
+						left: anchor.scrollX * scale + anchor.clientX * (scale - 1),
+						top: anchor.scrollY * scale + anchor.clientY * (scale - 1),
+						behavior: "auto"
+					});
+				});
 			}
 
 			function applyZoom(value) {
@@ -634,21 +680,26 @@ function prepareInitialPreviewHtml(
 					content.style.zoom = String(zoom);
 				}
 
-				vscode.setState({ zoom });
+				saveZoomState();
 
-				if (anchor && oldZoom > 0) {
-					const scale = zoom / oldZoom;
-
-					requestAnimationFrame(function () {
-					window.scrollTo({
-						left: anchor.scrollX * scale + anchor.clientX * (scale - 1),
-						top: anchor.scrollY * scale + anchor.clientY * (scale - 1),
-						behavior: "auto"
-					});
-				});
-
+				restoreScrollAroundAnchor(anchor, oldZoom, zoom);
 				pendingZoomAnchor = null;
 			}
+
+			function applyPageZoom(value) {
+				const oldPageZoom = pageZoom;
+				const anchor = pendingPageZoomAnchor;
+
+				pageZoom = clampZoom(value);
+
+				if (pageWrapper) {
+					pageWrapper.style.zoom = String(pageZoom);
+				}
+
+				saveZoomState();
+
+				restoreScrollAroundAnchor(anchor, oldPageZoom, pageZoom);
+				pendingPageZoomAnchor = null;
 			}
 
 			function getScrollTop() {
@@ -836,14 +887,20 @@ function prepareInitialPreviewHtml(
 
 				if (event.key === "0") {
 					event.preventDefault();
+
+					if (event.altKey) {
+						applyPageZoom(1);
+						return;
+					}
+
 					vscode.postMessage({ type: "previewZoomReset" });
 				}
 			});
 
 			window.addEventListener("wheel", function (event) {
-				const isZoomGesture = event.ctrlKey || event.metaKey;
+				const isCtrlZoomGesture = event.ctrlKey || event.metaKey;
 
-				if (!isZoomGesture) {
+				if (!isCtrlZoomGesture) {
 					return;
 				}
 
@@ -859,6 +916,29 @@ function prepareInitialPreviewHtml(
 
 				const direction = event.deltaY < 0 ? 1 : -1;
 
+				// Ctrl + Alt + mouse wheel:
+				// zoom the whole preview page wrapper like a PDF viewer.
+				if (event.altKey) {
+					const nextPageZoom = clampZoom(pageZoom + direction * 0.1);
+
+					if (nextPageZoom === pageZoom) {
+						return;
+					}
+
+					pendingPageZoomAnchor = {
+						clientX: event.clientX,
+						clientY: event.clientY,
+						scrollX: window.scrollX || document.documentElement.scrollLeft || 0,
+						scrollY: getScrollTop(),
+						oldZoom: pageZoom
+					};
+
+					applyPageZoom(nextPageZoom);
+					return;
+				}
+
+				// Ctrl + mouse wheel over diagram:
+				// zoom only the diagram.
 				const diagram = findZoomableDiagram(event.target);
 
 				if (diagram) {
@@ -869,6 +949,8 @@ function prepareInitialPreviewHtml(
 					return;
 				}
 
+				// Ctrl + mouse wheel over normal preview content:
+				// zoom Markdown content.
 				const nextZoom = clampZoom(zoom + direction * 0.1);
 
 				if (nextZoom === zoom) {
@@ -947,6 +1029,12 @@ function prepareInitialPreviewHtml(
 				applyZoom(restoredState.zoom);
 			} else {
 				applyZoom(zoom);
+			}
+
+			if (restoredState && typeof restoredState.pageZoom === "number") {
+				applyPageZoom(restoredState.pageZoom);
+			} else {
+				applyPageZoom(pageZoom);
 			}
 			}());
 		</script>
