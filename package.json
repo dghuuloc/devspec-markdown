@@ -18,7 +18,8 @@
         "sample:html": "npm run devspec -w @devspec-markdown/cli -- build --input docs/templates/sample-devspec.md --output build/sample-devspec.html",
         "sample:pdf": "npm run devspec -w @devspec-markdown/cli -- pdf --input build/sample-devspec.html --output build/sample-devspec.pdf --browser \"C:/Program Files/Google/Chrome/Application/chrome.exe\"",
         "prepare:vsix": "node scripts/prepare-vsix.mjs",
-        "package:vsix": "npm run compile && npm run prepare:vsix"
+        "package:vsix": "npm run copy:mermaid && npm run compile && npm run prepare:vsix",
+        "copy:mermaid": "npm run copy:mermaid -w devspec-markdown-vscode"
     },
     "devDependencies": {
         "@devspec-markdown/core": "^0.0.1",

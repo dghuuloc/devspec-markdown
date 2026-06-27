@@ -23,7 +23,8 @@
     "markdown-it-multimd-table": "^4.2.3",
     "markdown-it-task-lists": "^2.1.1",
     "pagedjs": "^0.4.3",
-    "puppeteer-core": "^24.10.2"
+    "puppeteer-core": "^24.10.2",
+    "mermaid": "^11.0.0"
   },
   "devDependencies": {
     "@types/markdown-it": "^14.1.2",

@@ -143,6 +143,11 @@ copyDirectory(
     path.join(stageDir, "images")
 );
 
+copyDirectoryIfExists(
+    path.join(extensionDir, "media"),
+    path.join(stageDir, "media")
+);
+
 /**
  * Final package.json for vsce.
  *
@@ -161,6 +166,7 @@ const finalPackageJson = {
         "out/**",
         "node_modules/**",
         "images/**",
+        "media/**",
         "README.md",
         "CHANGELOG.md",
         "LICENSE",
@@ -253,6 +259,14 @@ function copyDirectory(source, target) {
 
         fs.copyFileSync(sourcePath, targetPath);
     }
+}
+
+function copyDirectoryIfExists(source, target) {
+    if (!fs.existsSync(source)) {
+        return;
+    }
+
+    copyDirectory(source, target);
 }
 
 function copyIfExists(source, target) {

@@ -24,6 +24,7 @@
     "files": [
         "out/**",
         "images/**",
+        "media/**",
         "node_modules/@devspec-markdown/core/dist/**",
         "node_modules/@devspec-markdown/core/vendor/**",
         "node_modules/@devspec-markdown/core/package.json",
@@ -197,10 +198,13 @@
     "scripts": {
         "compile": "tsc -p ./",
         "watch": "tsc -watch -p ./",
-        "package": "echo \"Use npm run package:vsix from the repository root.\" && exit 1"
+        "package": "echo \"Use npm run package:vsix from the repository root.\" && exit 1",
+        "copy:mermaid": "node scripts/copy-mermaid.js",
+        "vscode:prepublish": "npm run copy:mermaid && npm run compile"
     },
     "dependencies": {
-        "@devspec-markdown/core": "file:../core"
+        "@devspec-markdown/core": "file:../core",
+        "mermaid": "^11.0.0"
     },
     "devDependencies": {
         "@types/node": "^22.13.10",

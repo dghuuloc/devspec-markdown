@@ -109,7 +109,7 @@ export function renderMarkdownToHtml(options: RenderMarkdownOptions): RenderMark
 		</article>
 		</main>
 	</div>`
-			: `  <article class="markdown-body">
+		: `  <article class="markdown-body">
 	${bodyHtml}
 	</article>`;
 
@@ -213,6 +213,10 @@ function createMarkdownRenderer(
 		if (info.language === "plantuml" || info.language === "puml") {
 			const svg = renderPlantUmlToSvg(token.content, plantuml);
 			return renderPlantUmlFigure(svg, info.title);
+		}
+
+		if (info.language === "mermaid" || info.language === "mmd") {
+			return renderMermaidFigure(token.content, info.title);
 		}
 
 		const highlighted = highlightCode(token.content, language);
@@ -376,11 +380,22 @@ function renderPlantUmlFigure(svgOrHtml: string, caption: string): string {
 	const captionHtml = caption ? `<figcaption>${escapeHtml(caption)}</figcaption>` : "";
 
 	return `
-<figure class="plantuml-diagram">
-${body}
-${captionHtml}
-</figure>
-`;
+	<figure class="plantuml-diagram">
+		${body}
+		${captionHtml}
+	</figure>
+	`;
+}
+
+function renderMermaidFigure(source: string, caption: string): string {
+	const captionHtml = caption ? `<figcaption>${escapeHtml(caption)}</figcaption>` : "";
+
+	return `
+	<figure class="mermaid-diagram">
+		<pre class="mermaid">${escapeHtml(source)}</pre>
+		${captionHtml}
+	</figure>
+	`;
 }
 
 function isSvg(value: string): boolean {
@@ -479,7 +494,8 @@ function normalizeCodeLanguage(value: string): string {
 		shell: "bash",
 		yml: "yaml",
 		ps1: "powershell",
-		puml: "plantuml"
+		puml: "plantuml",
+		mmd: "mermaid"
 	};
 
 	const raw = value.toLowerCase().trim();
