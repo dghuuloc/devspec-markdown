@@ -804,7 +804,17 @@ body {
   background: transparent;
   border: 0;
   color: inherit;
-  text-align: left;
+  text-align: center;
+  white-space: normal;
+  overflow: visible;
+}
+
+.markdown-body .mermaid-diagram pre.mermaid svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .markdown-body .mermaid-diagram svg {

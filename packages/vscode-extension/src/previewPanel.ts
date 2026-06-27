@@ -335,6 +335,7 @@ export class DevSpecPreviewPanel {
 					result.html,
 					this.panel.webview,
 					result.bodyHtml,
+					this.context.extensionUri,
 					this.previewZoom
 				);
 				this.initialized = true;
@@ -534,10 +535,15 @@ function prepareInitialPreviewHtml(
 	html: string,
 	webview: vscode.Webview,
 	initialBodyHtml: string,
+	extensionUri: vscode.Uri,
 	initialZoom: number
 ): string {
 	const nonce = createNonce();
-	const csp = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} data:; style-src 'unsafe-inline' ${webview.cspSource}; script-src 'nonce-${nonce}';">`;
+	const mermaidScriptUri = webview.asWebviewUri(
+		vscode.Uri.joinPath(extensionUri, "media", "mermaid.min.js")
+	);
+
+	const csp = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} data:; style-src 'unsafe-inline' ${webview.cspSource}; script-src 'nonce-${nonce}' ${webview.cspSource};">`;
 
 	let output = html.replace("<head>", `<head>\n  ${csp}`);
 
@@ -602,15 +608,37 @@ function prepareInitialPreviewHtml(
 				overflow: auto !important;
 			}
 
+			.markdown-body .mermaid-diagram:not(.devspec-diagram-zoomed) {
+			text-align: center !important;
+			}
+
+			.markdown-body .mermaid-diagram:not(.devspec-diagram-zoomed) pre.mermaid {
+			width: 100% !important;
+			text-align: center !important;
+			white-space: normal !important;
+			overflow: visible !important;
+			}
+
+			.markdown-body .mermaid-diagram:not(.devspec-diagram-zoomed) pre.mermaid svg,
+			.markdown-body .mermaid-diagram:not(.devspec-diagram-zoomed) > svg,
+			.markdown-body .mermaid-diagram:not(.devspec-diagram-zoomed) .mermaid-rendered svg {
+			display: block !important;
+			max-width: 100% !important;
+			height: auto !important;
+			margin-left: auto !important;
+			margin-right: auto !important;
+			}
+
 			.markdown-body .devspec-diagram-zoomed {
-				text-align: left !important;
+			text-align: center !important;
 			}
 
 			.markdown-body .devspec-diagram-zoomed img,
 			.markdown-body .devspec-diagram-zoomed svg {
-				max-width: none !important;
-				margin-left: 0 !important;
-				margin-right: 0 !important;
+			max-width: none !important;
+			margin-left: auto !important;
+			margin-right: auto !important;
+			display: block !important;
 			}
 
 			.markdown-body .plantuml-diagram:hover,
@@ -649,7 +677,8 @@ function prepareInitialPreviewHtml(
 
 	output = output.replace(
 		"</body>",
-		` <script nonce="${nonce}">
+		`<script nonce="${nonce}" src="${mermaidScriptUri}"></script>
+		<script nonce="${nonce}">
 		(function () {
 			const vscode = acquireVsCodeApi();
 			const content = document.getElementById("devspec-content");
@@ -1203,7 +1232,8 @@ function prepareInitialPreviewHtml(
 			} else {
 				applyPageZoom(pageZoom);
 			}
-			}());
+			
+		}());
 		</script>
 		</body>`
 	);
