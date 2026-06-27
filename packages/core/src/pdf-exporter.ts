@@ -118,6 +118,7 @@ export async function exportHtmlFileToPdf(options: ExportPdfOptions): Promise<st
 			timeout: 60_000
 		});
 
+		await renderMermaidDiagrams(page);
 		await runPagedJs(page);
 
 		fs.mkdirSync(path.dirname(outputFile), { recursive: true });
@@ -175,6 +176,189 @@ export async function exportHtmlFileToPdf(options: ExportPdfOptions): Promise<st
 	}
 
 	return outputFile;
+}
+
+async function renderMermaidDiagrams(page: import("puppeteer-core").Page): Promise<void> {
+	const mermaidScriptPath = resolveMermaidPath();
+
+	if (!mermaidScriptPath) {
+		return;
+	}
+
+	const hasMermaidBlocks = await page.evaluate(() => {
+		return document.querySelectorAll("pre.mermaid").length > 0;
+	});
+
+	if (!hasMermaidBlocks) {
+		return;
+	}
+
+	await page.addScriptTag({
+		path: mermaidScriptPath
+	});
+
+	await page.evaluate(async () => {
+		const globalScope = globalThis as unknown as {
+			mermaid?: {
+				initialize: (options: Record<string, unknown>) => void;
+				render: (
+					id: string,
+					source: string
+				) => Promise<{
+					svg: string;
+					bindFunctions?: (element: Element) => void;
+				}>;
+			};
+		};
+
+		if (!globalScope.mermaid) {
+			return;
+		}
+
+		function escapeHtml(value: string): string {
+			return value.replace(/[&<>"']/g, (char) => {
+				if (char === "&") return "&amp;";
+				if (char === "<") return "&lt;";
+				if (char === ">") return "&gt;";
+				if (char === '"') return "&quot;";
+				if (char === "'") return "&#039;";
+				return char;
+			});
+		}
+
+		function normalizeMermaidSvg(container: HTMLElement): void {
+			const svg = container.querySelector("svg") as SVGSVGElement | null;
+
+			if (!svg) {
+				return;
+			}
+
+			const viewBox = svg.getAttribute("viewBox");
+
+			if (!viewBox) {
+				return;
+			}
+
+			const parts = viewBox.trim().split(/\s+/).map(Number);
+
+			if (parts.length !== 4 || parts.some((value) => !Number.isFinite(value))) {
+				return;
+			}
+
+			const viewBoxWidth = parts[2];
+			const viewBoxHeight = parts[3];
+
+			if (viewBoxWidth <= 0 || viewBoxHeight <= 0) {
+				return;
+			}
+
+			const maxWidth = 760;
+			const maxHeight = 620;
+
+			let targetWidth = Math.min(viewBoxWidth, maxWidth);
+			let targetHeight = targetWidth * (viewBoxHeight / viewBoxWidth);
+
+			if (targetHeight > maxHeight) {
+				const ratio = maxHeight / targetHeight;
+				targetWidth = targetWidth * ratio;
+				targetHeight = maxHeight;
+			}
+
+			svg.removeAttribute("width");
+			svg.removeAttribute("height");
+
+			svg.style.width = `${Math.round(targetWidth)}px`;
+			svg.style.height = "auto";
+			svg.style.maxWidth = "100%";
+			svg.style.maxHeight = `${maxHeight}px`;
+			svg.style.display = "block";
+			svg.style.margin = "0 auto";
+
+			container.style.width = "100%";
+			container.style.textAlign = "center";
+		}
+
+		globalScope.mermaid.initialize({
+			startOnLoad: false,
+			securityLevel: "strict",
+			theme: "default"
+		});
+
+		const nodes = Array.from(document.querySelectorAll("pre.mermaid")) as HTMLElement[];
+		const renderRunId = Date.now().toString(36);
+
+		for (let index = 0; index < nodes.length; index += 1) {
+			const node = nodes[index];
+			const source = node.textContent || "";
+			const id = `devspec-mermaid-pdf-${renderRunId}-${index}`;
+
+			try {
+				const result = await globalScope.mermaid.render(id, source);
+
+				const rendered = document.createElement("div");
+				rendered.className = "mermaid-rendered";
+				rendered.setAttribute("data-processed", "true");
+				rendered.innerHTML = result.svg;
+
+				normalizeMermaidSvg(rendered);
+
+				node.replaceWith(rendered);
+
+				if (result.bindFunctions) {
+					result.bindFunctions(rendered);
+				}
+			} catch (error) {
+				const errorNode = document.createElement("pre");
+				errorNode.className = "mermaid-error";
+				errorNode.textContent = `Mermaid render failed: ${escapeHtml(String(error))}`;
+				node.replaceWith(errorNode);
+			}
+		}
+	});
+
+	await page.waitForFunction(() => {
+		const figures = Array.from(document.querySelectorAll(".mermaid-diagram"));
+
+		if (figures.length === 0) {
+			return true;
+		}
+
+		return figures.every((figure) => {
+			const error = figure.querySelector(".mermaid-error");
+
+			if (error) {
+				return true;
+			}
+
+			const svg = figure.querySelector(".mermaid-rendered svg");
+
+			if (!svg) {
+				return false;
+			}
+
+			const box = svg.getBoundingClientRect();
+
+			return box.width > 0 && box.height > 0;
+		});
+	}, {
+		timeout: 30_000
+	});
+
+	await page.evaluate(() => {
+		return new Promise<void>((resolve) => {
+			requestAnimationFrame(() => {
+				requestAnimationFrame(() => resolve());
+			});
+		});
+	});
+}
+
+function resolveMermaidPath(): string | undefined {
+	try {
+		return nodeRequire.resolve("mermaid/dist/mermaid.min.js");
+	} catch {
+		return undefined;
+	}
 }
 
 async function runPagedJs(page: import("puppeteer-core").Page): Promise<void> {

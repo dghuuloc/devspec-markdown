@@ -787,6 +787,65 @@ body {
   color: #1f2937;
 }
 
+/* Mermaid diagrams */
+.markdown-body .mermaid-diagram {
+  margin: 20px 0 24px 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #ffffff;
+  overflow-x: auto;
+  text-align: center;
+}
+
+.markdown-body .mermaid-diagram pre.mermaid {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  text-align: left;
+}
+
+.markdown-body .mermaid-diagram svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.markdown-body .mermaid-rendered {
+  display: block;
+  width: 100%;
+  overflow: visible;
+  text-align: center;
+}
+
+.markdown-body .mermaid-rendered svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+}
+
+.markdown-body .mermaid-diagram figcaption {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.markdown-body .mermaid-error {
+  margin: 8px 0 0 0;
+  padding: 8px 10px;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-family: "Cascadia Code", "JetBrains Mono", Consolas, Monaco, "Courier New", monospace;
+  font-size: 12px;
+  text-align: left;
+  white-space: pre-wrap;
+}
+
 /* ==========================================================================
    PDF print mode
    ========================================================================== */
@@ -889,6 +948,51 @@ body {
     font-size: 11px !important;
     font-style: italic !important;
     text-align: center !important;
+  }
+
+  .markdown-body .mermaid-diagram {
+    display: block !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    margin: 12px 0 22px 0 !important;
+    padding: 10px !important;
+    border: 1px solid var(--line) !important;
+    border-radius: 10px !important;
+    background: #ffffff !important;
+    overflow: visible !important;
+
+    break-inside: auto !important;
+    page-break-inside: auto !important;
+  }
+
+  .markdown-body h3:has(+ .mermaid-diagram) {
+    break-after: avoid !important;
+    page-break-after: avoid !important;
+  }
+
+  .markdown-body h3 + .mermaid-diagram {
+    break-before: avoid !important;
+    page-break-before: avoid !important;
+  }
+
+  .markdown-body .mermaid-diagram pre.mermaid {
+    display: none !important;
+  }
+
+  .markdown-body .mermaid-rendered {
+    display: block !important;
+    width: 100% !important;
+    overflow: visible !important;
+    text-align: center !important;
+  }
+
+  .markdown-body .mermaid-rendered svg {
+    display: block !important;
+    width: auto !important;
+    max-width: 100% !important;
+    max-height: 620px !important;
+    height: auto !important;
+    margin: 0 auto !important;
   }
 
   .markdown-body .listingblock,

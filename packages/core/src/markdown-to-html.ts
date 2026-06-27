@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { createRequire } from "node:module";
 import MarkdownIt from "markdown-it";
 import markdownItAttrs from "markdown-it-attrs";
 import markdownItContainer from "markdown-it-container";
@@ -7,6 +8,7 @@ import markdownItDeflist from "markdown-it-deflist";
 import markdownItFootnote from "markdown-it-footnote";
 import markdownItMultiMdTable from "markdown-it-multimd-table";
 import markdownItTaskLists from "markdown-it-task-lists";
+import markdownItKatex from "@vscode/markdown-it-katex";
 import hljs from "highlight.js";
 import { DEFAULT_DEVSPEC_CSS } from "./default-style";
 import { renderPlantUmlToSvg, type PlantUmlOptions } from "./plantuml-renderer";
@@ -16,6 +18,8 @@ import {
 	stripExistingSectionNumber,
 	type SectionNumberingOptions
 } from "./section-numbering";
+
+const nodeRequire = createRequire(__filename);
 
 export interface Heading {
 	level: number;
@@ -98,7 +102,11 @@ export function renderMarkdownToHtml(options: RenderMarkdownOptions): RenderMark
 		bodyHtml = rewriteImageSources(bodyHtml, options.imageUriResolver);
 	}
 
-	const css = options.css ?? DEFAULT_DEVSPEC_CSS;
+	const css = [
+		options.css ?? DEFAULT_DEVSPEC_CSS,
+		loadKatexCss(),
+		DEFAULT_KATEX_CSS
+	].filter(Boolean).join("\n\n");
 	const title = options.title ?? "DevSpec Markdown";
 	const bodyClass = options.viewMode === "preview" ? ' class="devspec-preview"' : "";
 	const documentBody = options.viewMode === "preview"
@@ -175,6 +183,12 @@ function createMarkdownRenderer(
 		linkify: true,
 		typographer: true,
 		breaks: false
+	});
+
+	md.use(markdownItKatex, {
+		throwOnError: false,
+		errorColor: "#b91c1c",
+		strict: "warn"
 	});
 
 	md.use(markdownItFootnote);
@@ -568,6 +582,71 @@ function sanitizeName(value: string, fallback: string): string {
 		.replace(/-+$/, "");
 
 	return safe || fallback;
+}
+
+const DEFAULT_KATEX_CSS = `
+.markdown-body .katex {
+	font-size: 1.04em;
+}
+
+.markdown-body .katex-display {
+	margin: 1em 0;
+	padding: 0.25em 0;
+	overflow-x: auto;
+	overflow-y: hidden;
+}
+
+.markdown-body .katex-display > .katex {
+	max-width: 100%;
+}
+
+@media print {
+	.markdown-body .katex-display {
+		break-inside: avoid;
+		page-break-inside: avoid;
+	}
+}
+`;
+
+let cachedKatexCss: string | undefined;
+
+function loadKatexCss(): string {
+	if (cachedKatexCss !== undefined) {
+		return cachedKatexCss;
+	}
+
+	try {
+		const cssPath = nodeRequire.resolve("katex/dist/katex.min.css");
+		const cssDir = path.dirname(cssPath);
+		let css = fs.readFileSync(cssPath, "utf8");
+
+		css = css.replace(
+			/url\((?:'|")?fonts\/([^)'"]+)(?:'|")?\)/g,
+			(_match: string, fontFileName: string) => {
+				const fontPath = path.join(cssDir, "fonts", fontFileName);
+				const ext = path.extname(fontFileName).toLowerCase();
+
+				const mime =
+					ext === ".woff2"
+						? "font/woff2"
+						: ext === ".woff"
+							? "font/woff"
+							: ext === ".ttf"
+								? "font/ttf"
+								: "application/octet-stream";
+
+				const fontData = fs.readFileSync(fontPath).toString("base64");
+
+				return `url(data:${mime};base64,${fontData})`;
+			}
+		);
+
+		cachedKatexCss = css;
+		return cachedKatexCss;
+	} catch {
+		cachedKatexCss = "";
+		return cachedKatexCss;
+	}
 }
 
 function escapeHtml(value: string): string {

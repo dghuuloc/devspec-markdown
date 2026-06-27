@@ -4,8 +4,6 @@
 
 Built for engineering documents: development specifications, architecture records, API design notes, implementation summaries, runbooks, and internal technical reports.
 
-:toc:
-
 ---
 ## Features
 

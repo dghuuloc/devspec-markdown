@@ -14,7 +14,9 @@
     "watch": "tsc -watch -p ./"
   },
   "dependencies": {
+    "@vscode/markdown-it-katex": "^1.1.2",
     "highlight.js": "^11.11.1",
+    "katex": "^0.16.47",
     "markdown-it": "^14.1.0",
     "markdown-it-attrs": "^4.3.0",
     "markdown-it-container": "^4.0.0",
@@ -22,9 +24,9 @@
     "markdown-it-footnote": "^4.0.0",
     "markdown-it-multimd-table": "^4.2.3",
     "markdown-it-task-lists": "^2.1.1",
+    "mermaid": "^11.0.0",
     "pagedjs": "^0.4.3",
-    "puppeteer-core": "^24.10.2",
-    "mermaid": "^11.0.0"
+    "puppeteer-core": "^24.10.2"
   },
   "devDependencies": {
     "@types/markdown-it": "^14.1.2",
