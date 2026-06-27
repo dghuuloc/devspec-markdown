@@ -723,7 +723,7 @@ function prepareInitialPreviewHtml(
 				if (pageWrapper) {
 					pageWrapper.style.zoom = String(pageZoom);
 				}
-i
+
 				saveZoomState();
 
 				restoreScrollAroundAnchor(anchor, oldPageZoom, pageZoom);
