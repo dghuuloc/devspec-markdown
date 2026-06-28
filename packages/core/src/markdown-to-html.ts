@@ -585,25 +585,67 @@ function sanitizeName(value: string, fallback: string): string {
 }
 
 const DEFAULT_KATEX_CSS = `
+/* ==========================================================================
+   KaTeX math
+   ========================================================================== */
+
+/*
+   KaTeX uses a math font whose visual size is smaller than body text.
+   1.12em makes inline math visually closer to normal paragraph text.
+*/
 .markdown-body .katex {
-	font-size: 1.04em;
+	font-size: 1.12em !important;
+	line-height: 1.2;
 }
 
+/* Inline math inside normal content */
+.markdown-body p .katex,
+.markdown-body li .katex,
+.markdown-body td .katex {
+	font-size: 1.12em !important;
+	vertical-align: baseline;
+}
+
+/* Display math */
 .markdown-body .katex-display {
-	margin: 1em 0;
-	padding: 0.25em 0;
+	margin: 0.85em 0;
+	padding: 0.2em 0;
 	overflow-x: auto;
 	overflow-y: hidden;
+	text-align: center;
 }
 
+/* Display math can be slightly larger for readability */
 .markdown-body .katex-display > .katex {
+	font-size: 1.16em !important;
 	max-width: 100%;
 }
 
+/* Avoid huge vertical spacing inside display math */
+.markdown-body .katex-display .katex {
+	line-height: 1.25;
+}
+
 @media print {
+	.markdown-body .katex {
+		font-size: 1.12em !important;
+	}
+
+	.markdown-body p .katex,
+	.markdown-body li .katex,
+	.markdown-body td .katex {
+		font-size: 1.12em !important;
+	}
+
 	.markdown-body .katex-display {
+		margin: 0.75em 0;
+		padding: 0.15em 0;
 		break-inside: avoid;
 		page-break-inside: avoid;
+	}
+
+	.markdown-body .katex-display > .katex {
+		font-size: 1.16em !important;
 	}
 }
 `;

@@ -490,7 +490,7 @@ This file is used to test:
 ### Inline KaTeX Math
 Einstein's formula is $E = mc^2$.
 
-The quadratic formula is $x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}$.
+The quadratic formula is $x = \dfrac{-b \pm \sqrt{b^2 - 4ac}}{2a}$.
 
 The cost is \$100, so this dollar sign should not become math.
 
