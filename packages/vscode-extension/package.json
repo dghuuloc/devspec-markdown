@@ -40,7 +40,20 @@
         "onCommand:devspecMarkdown.exportPdf",
         "onCommand:devspecMarkdown.checkDependencies",
         "onCommand:devspecMarkdown.installDependencies",
-        "onCommand:devspecMarkdown.resetDependencyPrompt"
+        "onCommand:devspecMarkdown.resetDependencyPrompt",
+        "onCommand:devspecMarkdown.formatTable",
+        "onCommand:devspecMarkdown.editing.toggleBold",
+        "onCommand:devspecMarkdown.editing.toggleItalic",
+        "onCommand:devspecMarkdown.editing.toggleCodeSpan",
+        "onCommand:devspecMarkdown.editing.toggleMath",
+        "onCommand:devspecMarkdown.editing.toggleCodeBlock",
+        "onCommand:devspecMarkdown.editing.toggleMathBlock",
+        "onCommand:devspecMarkdown.editing.toggleTaskList",
+        "onCommand:devspecMarkdown.editing.toggleTaskCheck",
+        "onCommand:devspecMarkdown.editing.toggleBulletList",
+        "onCommand:devspecMarkdown.editing.toggleNumberedList",
+        "onCommand:devspecMarkdown.toc.insertOrUpdate",
+        "onCommand:devspecMarkdown.toc.remove"
     ],
     "main": "./out/extension.js",
     "contributes": {
@@ -70,6 +83,58 @@
             {
                 "command": "devspecMarkdown.resetDependencyPrompt",
                 "title": "DevSpec: Reset Dependency Prompt"
+            },
+            {
+                "command": "devspecMarkdown.formatTable",
+                "title": "DevSpec: Format Markdown Table"
+            },
+            {
+                "command": "devspecMarkdown.editing.toggleBold",
+                "title": "DevSpec: Toggle Bold"
+            },
+            {
+                "command": "devspecMarkdown.editing.toggleItalic",
+                "title": "DevSpec: Toggle Italic"
+            },
+            {
+                "command": "devspecMarkdown.editing.toggleCodeSpan",
+                "title": "DevSpec: Toggle Inline Code"
+            },
+            {
+                "command": "devspecMarkdown.editing.toggleMath",
+                "title": "DevSpec: Toggle Inline Math"
+            },
+            {
+                "command": "devspecMarkdown.editing.toggleCodeBlock",
+                "title": "DevSpec: Toggle Code Block"
+            },
+            {
+                "command": "devspecMarkdown.editing.toggleMathBlock",
+                "title": "DevSpec: Toggle Math Block"
+            },
+            {
+                "command": "devspecMarkdown.editing.toggleTaskList",
+                "title": "DevSpec: Toggle Task List"
+            },
+            {
+                "command": "devspecMarkdown.editing.toggleTaskCheck",
+                "title": "DevSpec: Toggle Task Check"
+            },
+            {
+                "command": "devspecMarkdown.editing.toggleBulletList",
+                "title": "DevSpec: Toggle Bullet List"
+            },
+            {
+                "command": "devspecMarkdown.editing.toggleNumberedList",
+                "title": "DevSpec: Toggle Numbered List"
+            },
+            {
+                "command": "devspecMarkdown.toc.insertOrUpdate",
+                "title": "DevSpec: Insert or Update Table of Contents"
+            },
+            {
+                "command": "devspecMarkdown.toc.remove",
+                "title": "DevSpec: Remove Table of Contents"
             }
         ],
         "menus": {
@@ -177,6 +242,40 @@
                     "minimum": 0.5,
                     "maximum": 3,
                     "description": "Initial zoom level for the DevSpec Markdown preview. 1 means 100%, 1.5 means 150%."
+                },
+                "devspecMarkdown.tableFormatter.enabled": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enable DevSpec Markdown table formatting."
+                },
+                "devspecMarkdown.completion.katex.enabled": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enable KaTeX command completions in Markdown files."
+                },
+                "devspecMarkdown.listEditing.enabled": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enable DevSpec Markdown list editing commands."
+                },
+                "devspecMarkdown.toc.minLevel": {
+                    "type": "number",
+                    "default": 2,
+                    "minimum": 1,
+                    "maximum": 6,
+                    "description": "Minimum heading level included by the DevSpec editor TOC command."
+                },
+                "devspecMarkdown.toc.maxLevel": {
+                    "type": "number",
+                    "default": 4,
+                    "minimum": 1,
+                    "maximum": 6,
+                    "description": "Maximum heading level included by the DevSpec editor TOC command."
+                },
+                "devspecMarkdown.toc.title": {
+                    "type": "string",
+                    "default": "Table of Contents",
+                    "description": "Title used by the DevSpec editor TOC command."
                 }
             }
         },
@@ -192,6 +291,42 @@
                 "key": "ctrl+alt+v",
                 "mac": "cmd+alt+v",
                 "when": "editorLangId == markdown"
+            },
+            {
+                "command": "devspecMarkdown.formatTable",
+                "key": "ctrl+alt+t",
+                "mac": "cmd+alt+t",
+                "when": "editorTextFocus && !editorReadonly && editorLangId == markdown"
+            },
+            {
+                "command": "devspecMarkdown.editing.toggleBold",
+                "key": "ctrl+b",
+                "mac": "cmd+b",
+                "when": "editorTextFocus && !editorReadonly && editorLangId == markdown"
+            },
+            {
+                "command": "devspecMarkdown.editing.toggleItalic",
+                "key": "ctrl+alt+i",
+                "mac": "cmd+alt+i",
+                "when": "editorTextFocus && !editorReadonly && editorLangId == markdown"
+            },
+            {
+                "command": "devspecMarkdown.editing.toggleCodeSpan",
+                "key": "ctrl+shift+c",
+                "mac": "cmd+shift+c",
+                "when": "editorTextFocus && !editorReadonly && editorLangId == markdown"
+            },
+            {
+                "command": "devspecMarkdown.editing.toggleMath",
+                "key": "ctrl+shift+m",
+                "mac": "cmd+shift+m",
+                "when": "editorTextFocus && !editorReadonly && editorLangId == markdown"
+            },
+            {
+                "command": "devspecMarkdown.editing.toggleTaskCheck",
+                "key": "ctrl+alt+x",
+                "mac": "cmd+alt+x",
+                "when": "editorTextFocus && !editorReadonly && editorLangId == markdown"
             }
         ]
     },

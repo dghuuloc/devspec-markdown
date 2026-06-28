@@ -24,6 +24,13 @@ import {
 	showDependencyStatus
 } from "./dependencyManager";
 
+import { registerCompletionProviders } from "./completion";
+import { registerEditorContextService } from "./editor-context-service";
+import { registerFormattingCommands } from "./formatting";
+import { registerListEditingCommands } from "./listEditing";
+import { registerTableFormatter } from "./tableFormatter";
+import { registerTocCommands } from "./toc";
+
 /**
  * The fully rendered output produced from a Markdown document.
  * Returned by {@link renderCurrentMarkdownToHtml} and consumed by the
@@ -82,6 +89,13 @@ function getActiveMarkdownDocument(): vscode.TextDocument | undefined {
  * @param context - The extension context provided by VS Code.
  */
 export function activate(context: vscode.ExtensionContext): void {
+
+	registerEditorContextService(context);
+	registerCompletionProviders(context);
+	registerFormattingCommands(context);
+	registerListEditingCommands(context);
+	registerTableFormatter(context);
+	registerTocCommands(context);
 
 	// command: Open Preview
 	context.subscriptions.push(
