@@ -148,6 +148,11 @@ copyDirectoryIfExists(
     path.join(stageDir, "media")
 );
 
+copyDirectoryIfExists(
+    path.join(extensionDir, "snippets"),
+    path.join(stageDir, "snippets")
+);
+
 /**
  * Final package.json for vsce.
  *
@@ -167,6 +172,7 @@ const finalPackageJson = {
         "node_modules/**",
         "images/**",
         "media/**",
+        "snippets/**",
         "README.md",
         "CHANGELOG.md",
         "LICENSE",

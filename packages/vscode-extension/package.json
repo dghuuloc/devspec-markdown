@@ -25,6 +25,7 @@
         "out/**",
         "images/**",
         "media/**",
+        "snippets/**",
         "node_modules/@devspec-markdown/core/dist/**",
         "node_modules/@devspec-markdown/core/vendor/**",
         "node_modules/@devspec-markdown/core/package.json",
@@ -53,7 +54,19 @@
         "onCommand:devspecMarkdown.editing.toggleBulletList",
         "onCommand:devspecMarkdown.editing.toggleNumberedList",
         "onCommand:devspecMarkdown.toc.insertOrUpdate",
-        "onCommand:devspecMarkdown.toc.remove"
+        "onCommand:devspecMarkdown.toc.remove",
+        "onCommand:devspecMarkdown.template.newDocument",
+        "onCommand:devspecMarkdown.template.insertDocumentSkeleton",
+        "onCommand:devspecMarkdown.insert.apiSection",
+        "onCommand:devspecMarkdown.insert.databaseTable",
+        "onCommand:devspecMarkdown.insert.sequenceDiagram",
+        "onCommand:devspecMarkdown.insert.mermaidFlowchart",
+        "onCommand:devspecMarkdown.insert.mermaidStateDiagram",
+        "onCommand:devspecMarkdown.insert.errorTable",
+        "onCommand:devspecMarkdown.insert.testCaseTable",
+        "onCommand:devspecMarkdown.insert.decisionLog",
+        "onCommand:devspecMarkdown.insert.riskTable",
+        "onCommand:devspecMarkdown.insert.block"
     ],
     "main": "./out/extension.js",
     "contributes": {
@@ -135,6 +148,54 @@
             {
                 "command": "devspecMarkdown.toc.remove",
                 "title": "DevSpec: Remove Table of Contents"
+            },
+            {
+                "command": "devspecMarkdown.template.newDocument",
+                "title": "DevSpec: Create New DevSpec Document"
+            },
+            {
+                "command": "devspecMarkdown.template.insertDocumentSkeleton",
+                "title": "DevSpec: Insert Document Skeleton"
+            },
+            {
+                "command": "devspecMarkdown.insert.apiSection",
+                "title": "DevSpec: Insert API Section"
+            },
+            {
+                "command": "devspecMarkdown.insert.databaseTable",
+                "title": "DevSpec: Insert Database Table Section"
+            },
+            {
+                "command": "devspecMarkdown.insert.sequenceDiagram",
+                "title": "DevSpec: Insert PlantUML Sequence Diagram"
+            },
+            {
+                "command": "devspecMarkdown.insert.mermaidFlowchart",
+                "title": "DevSpec: Insert Mermaid Flowchart"
+            },
+            {
+                "command": "devspecMarkdown.insert.mermaidStateDiagram",
+                "title": "DevSpec: Insert Mermaid State Diagram"
+            },
+            {
+                "command": "devspecMarkdown.insert.errorTable",
+                "title": "DevSpec: Insert Error Code Table"
+            },
+            {
+                "command": "devspecMarkdown.insert.testCaseTable",
+                "title": "DevSpec: Insert Test Case Table"
+            },
+            {
+                "command": "devspecMarkdown.insert.decisionLog",
+                "title": "DevSpec: Insert Decision Log"
+            },
+            {
+                "command": "devspecMarkdown.insert.riskTable",
+                "title": "DevSpec: Insert Risk Table"
+            },
+            {
+                "command": "devspecMarkdown.insert.block",
+                "title": "DevSpec: Insert Block..."
             }
         ],
         "menus": {
@@ -276,6 +337,11 @@
                     "type": "string",
                     "default": "Table of Contents",
                     "description": "Title used by the DevSpec editor TOC command."
+                },
+                "devspecMarkdown.completion.devspec.enabled": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enable DevSpec document, section, admonition, and diagram completions in Markdown files."
                 }
             }
         },
@@ -327,6 +393,30 @@
                 "key": "ctrl+alt+x",
                 "mac": "cmd+alt+x",
                 "when": "editorTextFocus && !editorReadonly && editorLangId == markdown"
+            },
+            {
+                "command": "devspecMarkdown.template.newDocument",
+                "key": "ctrl+alt+d",
+                "mac": "cmd+alt+d",
+                "when": "editorLangId == markdown"
+            },
+            {
+                "command": "devspecMarkdown.insert.apiSection",
+                "key": "ctrl+alt+a",
+                "mac": "cmd+alt+a",
+                "when": "editorTextFocus && !editorReadonly && editorLangId == markdown"
+            },
+            {
+                "command": "devspecMarkdown.insert.block",
+                "key": "ctrl+alt+/",
+                "mac": "cmd+alt+/",
+                "when": "editorTextFocus && !editorReadonly && editorLangId == markdown"
+            }
+        ],
+        "snippets": [
+            {
+                "language": "markdown",
+                "path": "./snippets/devspec-markdown.code-snippets"
             }
         ]
     },

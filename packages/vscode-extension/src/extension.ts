@@ -30,6 +30,9 @@ import { registerFormattingCommands } from "./formatting";
 import { registerListEditingCommands } from "./listEditing";
 import { registerTableFormatter } from "./tableFormatter";
 import { registerTocCommands } from "./toc";
+import { registerSectionCommands } from "./sectionCommands";
+import { registerTemplateCommands } from "./templateCommands";
+import { registerInsertBlockCommand } from "./insertBlockCommand";
 
 /**
  * The fully rendered output produced from a Markdown document.
@@ -76,16 +79,6 @@ function getActiveMarkdownDocument(): vscode.TextDocument | undefined {
 }
 
 /**
- * Extension activation entry point called by VS Code when any of the
- * registered `activationEvents` fire:
- * - `onCommand:devspecMarkdown.openPreview`
- * - `onCommand:devspecMarkdown.exportHtml`
- * - `onCommand:devspecMarkdown.exportPdf`
- *
- * Registers three commands and pushes their disposables onto
- * `context.subscriptions` so they are automatically cleaned up when the
- * extension is deactivated.
- *
  * @param context - The extension context provided by VS Code.
  */
 export function activate(context: vscode.ExtensionContext): void {
@@ -96,6 +89,9 @@ export function activate(context: vscode.ExtensionContext): void {
 	registerListEditingCommands(context);
 	registerTableFormatter(context);
 	registerTocCommands(context);
+	registerTemplateCommands(context);
+	registerSectionCommands(context);
+	registerInsertBlockCommand(context);
 
 	// command: Open Preview
 	context.subscriptions.push(
