@@ -545,6 +545,24 @@ function prepareInitialPreviewHtml(
 
 	const csp = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} data:; style-src 'unsafe-inline' ${webview.cspSource}; script-src 'nonce-${nonce}' ${webview.cspSource};">`;
 
+	const searchToolbarHtml = `
+	<div id="devspec-preview-search" class="devspec-preview-search" hidden>
+		<div class="devspec-preview-search-row">
+			<input
+				id="devspec-preview-search-input"
+				class="devspec-preview-search-input"
+				type="text"
+				placeholder="Search preview..."
+				aria-label="Search preview"
+			/>
+			<span id="devspec-preview-search-count" class="devspec-preview-search-count">0/0</span>
+			<button id="devspec-preview-search-prev" class="devspec-preview-search-button" type="button" title="Previous match">↑</button>
+			<button id="devspec-preview-search-next" class="devspec-preview-search-button" type="button" title="Next match">↓</button>
+			<button id="devspec-preview-search-close" class="devspec-preview-search-button" type="button" title="Close search">×</button>
+		</div>
+	</div>
+	`;
+
 	let output = html.replace("<head>", `<head>\n  ${csp}`);
 
 	output = output.replace(
@@ -648,6 +666,82 @@ function prepareInitialPreviewHtml(
 				outline: 1px dashed rgba(37, 99, 235, 0.45);
 				outline-offset: 4px;
 			}
+
+			.devspec-preview-search {
+				position: fixed;
+				top: 0;
+				right: 10px;
+				left: auto;
+				transform: none;
+				z-index: 9999;
+				width: min(430px, calc(100vw - 96px));
+				padding: 4px 6px;
+				border: 1px solid rgba(148, 163, 184, 0.45);
+				border-top: 0;
+				border-radius: 0 0 8px 8px;
+				background: var(--vscode-editor-background);
+				color: var(--vscode-editor-foreground);
+				box-shadow: 0 6px 16px rgba(15, 23, 42, 0.18);
+				font-family: var(--vscode-font-family);
+			}
+
+			.devspec-preview-search-row {
+				display: flex;
+				align-items: center;
+				gap: 5px;
+			}
+
+			.devspec-preview-search-input {
+				flex: 1;
+				min-width: 0;
+				height: 24px;
+				padding: 2px 8px;
+				border: 1px solid var(--vscode-input-border, rgba(148, 163, 184, 0.65));
+				border-radius: 6px;
+				background: var(--vscode-input-background);
+				color: var(--vscode-input-foreground);
+				outline: none;
+				font-size: 12px;
+			}
+
+			.devspec-preview-search-input:focus {
+				border-color: var(--vscode-focusBorder);
+			}
+
+			.devspec-preview-search-count {
+				min-width: 38px;
+				text-align: center;
+				font-size: 11px;
+				color: var(--vscode-descriptionForeground);
+			}
+
+			.devspec-preview-search-button {
+				width: 24px;
+				height: 24px;
+				padding: 0;
+				border: 1px solid var(--vscode-button-border, transparent);
+				border-radius: 6px;
+				background: var(--vscode-button-secondaryBackground);
+				color: var(--vscode-button-secondaryForeground);
+				cursor: pointer;
+				font-size: 12px;
+				line-height: 20px;
+			}
+
+			.devspec-preview-search-button:hover {
+				background: var(--vscode-button-secondaryHoverBackground);
+			}
+
+			.devspec-preview-search-highlight {
+				border-radius: 3px;
+				background: rgba(250, 204, 21, 0.65);
+				color: inherit;
+			}
+
+			.devspec-preview-search-highlight-active {
+				background: rgba(249, 115, 22, 0.88);
+				color: #111827;
+			}
 		</style>
 		</head>`
 	);
@@ -677,13 +771,25 @@ function prepareInitialPreviewHtml(
 
 	output = output.replace(
 		"</body>",
-		`<script nonce="${nonce}" src="${mermaidScriptUri}"></script>
+		`${searchToolbarHtml}
+		<script nonce="${nonce}" src="${mermaidScriptUri}"></script>
 		<script nonce="${nonce}">
 		(function () {
 			const vscode = acquireVsCodeApi();
 			const content = document.getElementById("devspec-content");
 			const pageWrapper = document.getElementById("devspec-preview-page-wrapper");
 			const fileTitle = document.getElementById("devspec-preview-file-title");
+
+			const searchBox = document.getElementById("devspec-preview-search");
+			const searchInput = document.getElementById("devspec-preview-search-input");
+			const searchCount = document.getElementById("devspec-preview-search-count");
+			const searchPrevButton = document.getElementById("devspec-preview-search-prev");
+			const searchNextButton = document.getElementById("devspec-preview-search-next");
+			const searchCloseButton = document.getElementById("devspec-preview-search-close");
+
+			let searchQuery = "";
+			let searchMatches = [];
+			let activeSearchIndex = -1;
 
 			let programmaticScroll = false;
 			let scrollTimer = 0;
@@ -709,6 +815,242 @@ function prepareInitialPreviewHtml(
 					zoom: zoom,
 					pageZoom: pageZoom
 				});
+			}
+
+			function escapeSearchRegExp(value) {
+				return String(value).replace(new RegExp("[.*+?^" + "$" + "{}()|[\\]\\\\]", "g"), "\\$&");
+			}
+
+			function openPreviewSearch() {
+				if (!searchBox || !searchInput) {
+					return;
+				}
+
+				searchBox.hidden = false;
+				searchInput.focus();
+				searchInput.select();
+				updatePreviewSearch();
+			}
+
+			function closePreviewSearch() {
+				if (!searchBox || !searchInput) {
+					return;
+				}
+
+				searchBox.hidden = true;
+				searchInput.value = "";
+				searchQuery = "";
+				activeSearchIndex = -1;
+				clearPreviewSearchHighlights();
+				updateSearchCount();
+			}
+
+			function clearPreviewSearchHighlights() {
+				if (!content) {
+					return;
+				}
+
+				const highlights = Array.from(
+					content.querySelectorAll(".devspec-preview-search-highlight")
+				);
+
+				for (const highlight of highlights) {
+					const parent = highlight.parentNode;
+
+					if (!parent) {
+						continue;
+					}
+
+					parent.replaceChild(document.createTextNode(highlight.textContent || ""), highlight);
+					parent.normalize();
+				}
+
+				searchMatches = [];
+				activeSearchIndex = -1;
+			}
+
+			function shouldSkipSearchNode(node) {
+				const parent = node.parentElement;
+
+				if (!parent) {
+					return true;
+				}
+
+				return Boolean(
+					parent.closest(
+						[
+							"script",
+							"style",
+							"textarea",
+							"input",
+							"button",
+							"#devspec-preview-search",
+							".devspec-preview-search-highlight"
+						].join(",")
+					)
+				);
+			}
+
+			function collectSearchTextNodes(root) {
+				const nodes = [];
+				const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+					acceptNode(node) {
+						if (!node.textContent || !node.textContent.trim()) {
+							return NodeFilter.FILTER_REJECT;
+						}
+
+						if (shouldSkipSearchNode(node)) {
+							return NodeFilter.FILTER_REJECT;
+						}
+
+						return NodeFilter.FILTER_ACCEPT;
+					}
+				});
+
+				let current = walker.nextNode();
+
+				while (current) {
+					nodes.push(current);
+					current = walker.nextNode();
+				}
+
+				return nodes;
+			}
+
+			function highlightSearchInTextNode(textNode, regex) {
+				const text = textNode.textContent || "";
+				const fragment = document.createDocumentFragment();
+
+				let lastIndex = 0;
+				let match;
+
+				regex.lastIndex = 0;
+
+				while ((match = regex.exec(text)) !== null) {
+					const start = match.index;
+					const end = start + match[0].length;
+
+					if (start > lastIndex) {
+						fragment.appendChild(document.createTextNode(text.slice(lastIndex, start)));
+					}
+
+					const span = document.createElement("mark");
+					span.className = "devspec-preview-search-highlight";
+					span.textContent = text.slice(start, end);
+					fragment.appendChild(span);
+
+					lastIndex = end;
+
+					if (match[0].length === 0) {
+						regex.lastIndex += 1;
+					}
+				}
+
+				if (lastIndex < text.length) {
+					fragment.appendChild(document.createTextNode(text.slice(lastIndex)));
+				}
+
+				if (textNode.parentNode) {
+					textNode.parentNode.replaceChild(fragment, textNode);
+				}
+			}
+
+			function updatePreviewSearch() {
+				if (!content || !searchInput) {
+					return;
+				}
+
+				const nextQuery = searchInput.value.trim();
+
+				clearPreviewSearchHighlights();
+				searchQuery = nextQuery;
+
+				if (!searchQuery) {
+					updateSearchCount();
+					return;
+				}
+
+				const regex = new RegExp(escapeSearchRegExp(searchQuery), "gi");
+				const textNodes = collectSearchTextNodes(content);
+
+				for (const textNode of textNodes) {
+					highlightSearchInTextNode(textNode, regex);
+				}
+
+				searchMatches = Array.from(
+					content.querySelectorAll(".devspec-preview-search-highlight")
+				);
+
+				if (searchMatches.length > 0) {
+					activeSearchIndex = 0;
+					activateSearchMatch(activeSearchIndex);
+				}
+
+				updateSearchCount();
+			}
+
+			function activateSearchMatch(index) {
+				if (!searchMatches.length) {
+					activeSearchIndex = -1;
+					updateSearchCount();
+					return;
+				}
+
+				activeSearchIndex = ((index % searchMatches.length) + searchMatches.length) % searchMatches.length;
+
+				for (const match of searchMatches) {
+					match.classList.remove("devspec-preview-search-highlight-active");
+				}
+
+				const active = searchMatches[activeSearchIndex];
+
+				if (active) {
+					active.classList.add("devspec-preview-search-highlight-active");
+					active.scrollIntoView({
+						behavior: "smooth",
+						block: "center",
+						inline: "nearest"
+					});
+				}
+
+				updateSearchCount();
+			}
+
+			function goToNextSearchMatch() {
+				if (!searchMatches.length) {
+					return;
+				}
+
+				activateSearchMatch(activeSearchIndex + 1);
+			}
+
+			function goToPreviousSearchMatch() {
+				if (!searchMatches.length) {
+					return;
+				}
+
+				activateSearchMatch(activeSearchIndex - 1);
+			}
+
+			function updateSearchCount() {
+				if (!searchCount) {
+					return;
+				}
+
+				if (!searchQuery || !searchMatches.length) {
+					searchCount.textContent = "0/0";
+					return;
+				}
+
+				searchCount.textContent = String(activeSearchIndex + 1) + "/" + String(searchMatches.length);
+			}
+
+			function refreshSearchAfterContentUpdate() {
+				if (!searchBox || searchBox.hidden || !searchInput || !searchInput.value.trim()) {
+					return;
+				}
+
+				updatePreviewSearch();
 			}
 
 			function restoreScrollAroundAnchor(anchor, oldValue, newValue) {
@@ -1193,6 +1535,7 @@ function prepareInitialPreviewHtml(
 
 				content.innerHTML = message.bodyHtml || "";
 				applyZoom(zoom);
+				refreshSearchAfterContentUpdate();
 
 				if (fileTitle && message.title) {
 					fileTitle.textContent = message.title;
@@ -1218,6 +1561,65 @@ function prepareInitialPreviewHtml(
 				});
 				}, 80);
 			}, { passive: true });
+
+			document.addEventListener("keydown", function (event) {
+				const isCtrlOrMeta = event.ctrlKey || event.metaKey;
+
+				if (isCtrlOrMeta && event.key.toLowerCase() === "f") {
+					event.preventDefault();
+					event.stopPropagation();
+					openPreviewSearch();
+					return;
+				}
+
+				if (event.key === "Escape" && searchBox && !searchBox.hidden) {
+					event.preventDefault();
+					closePreviewSearch();
+				}
+			});
+
+			if (searchInput) {
+				searchInput.addEventListener("input", function () {
+					updatePreviewSearch();
+				});
+
+				searchInput.addEventListener("keydown", function (event) {
+					if (event.key === "Enter" && event.shiftKey) {
+						event.preventDefault();
+						goToPreviousSearchMatch();
+						return;
+					}
+
+					if (event.key === "Enter") {
+						event.preventDefault();
+						goToNextSearchMatch();
+						return;
+					}
+
+					if (event.key === "Escape") {
+						event.preventDefault();
+						closePreviewSearch();
+					}
+				});
+			}
+
+			if (searchPrevButton) {
+				searchPrevButton.addEventListener("click", function () {
+					goToPreviousSearchMatch();
+				});
+			}
+
+			if (searchNextButton) {
+				searchNextButton.addEventListener("click", function () {
+					goToNextSearchMatch();
+				});
+			}
+
+			if (searchCloseButton) {
+				searchCloseButton.addEventListener("click", function () {
+					closePreviewSearch();
+				});
+			}
 
 			const restoredState = vscode.getState();
 
