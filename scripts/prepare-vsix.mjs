@@ -28,6 +28,10 @@ const extensionPackageJson = JSON.parse(
     fs.readFileSync(path.join(extensionDir, "package.json"), "utf8")
 );
 
+if (extensionPackageJson.scripts) {
+    delete extensionPackageJson.scripts["vscode:prepublish"];
+}
+
 if (
     !extensionPackageJson.publisher ||
     extensionPackageJson.publisher === "your-publisher-name"
