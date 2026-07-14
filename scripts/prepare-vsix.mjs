@@ -81,6 +81,11 @@ const publicRuntimeDependencies = {
 };
 
 delete publicRuntimeDependencies["@devspec-markdown/core"];
+delete publicRuntimeDependencies["mermaid"];
+delete publicRuntimeDependencies["@vscode/vsce"];
+delete publicRuntimeDependencies["typescript"];
+delete publicRuntimeDependencies["@types/node"];
+delete publicRuntimeDependencies["@types/vscode"];
 
 const installPackageJson = {
     ...extensionPackageJson,
@@ -196,6 +201,15 @@ fs.rmSync(path.join(stageDir, ".vscodeignore"), {
     force: true
 });
 
+prunePackageForVsix(path.join(stageDir, "node_modules"));
+prunePackageForVsix(path.join(stageDir, "out"));
+prunePackageForVsix(path.join(stageDir, "media"));
+
+console.log("Pruning completed.");
+
+console.log("");
+console.log("Packaging VSIX...");
+
 run(vsceCmd, ["package", "--no-yarn"], stageDir);
 
 const vsixFile = fs.readdirSync(stageDir).find((file) => file.endsWith(".vsix"));
@@ -295,4 +309,71 @@ function ensureRequiredTextFile(filePath, content) {
 
     fs.mkdirSync(path.dirname(filePath), { recursive: true });
     fs.writeFileSync(filePath, content, "utf8");
+}
+
+function prunePackageForVsix(directory) {
+    if (!fs.existsSync(directory)) {
+        return;
+    }
+
+    const removableDirectoryNames = new Set([
+        "test",
+        "tests",
+        "__tests__",
+        "coverage",
+        "docs",
+        "doc",
+        "example",
+        "examples",
+        "benchmark",
+        "benchmarks",
+        ".github",
+        ".vscode"
+    ]);
+
+    const removableFileNames = new Set([
+        ".DS_Store",
+        "tsconfig.json",
+        "tsconfig.tsbuildinfo",
+        "jest.config.js",
+        "jest.config.ts",
+        "vitest.config.js",
+        "vitest.config.ts",
+        "rollup.config.js",
+        "webpack.config.js"
+    ]);
+
+    const removableFileExtensions = [
+        ".map",
+        ".tsbuildinfo",
+        ".md",
+        ".markdown",
+        ".ts",
+        ".tsx",
+        ".mts",
+        ".cts"
+    ];
+
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+        const entryPath = path.join(directory, entry.name);
+
+        if (entry.isDirectory()) {
+            if (removableDirectoryNames.has(entry.name)) {
+                fs.rmSync(entryPath, { recursive: true, force: true });
+                continue;
+            }
+
+            prunePackageForVsix(entryPath);
+            continue;
+        }
+
+        if (removableFileNames.has(entry.name)) {
+            fs.rmSync(entryPath, { force: true });
+            continue;
+        }
+
+        if (removableFileExtensions.some((extension) => entry.name.endsWith(extension))) {
+            fs.rmSync(entryPath, { force: true });
+        }
+    }
 }

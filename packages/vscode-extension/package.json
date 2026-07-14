@@ -1,8 +1,8 @@
 {
     "name": "devspec-markdown-vscode",
     "displayName": "DevSpec Markdown",
-    "description": "VS Code live preview for DevSpec Markdown with PlantUML, TOC, and PDF export.",
-    "version": "0.0.7",
+    "description": "VS Code live preview for Markdown with PlantUML, Mermaid, and PDF export.",
+    "version": "0.0.8",
     "publisher": "dghuuloc",
     "icon": "images/devspec-markdown-icon-256.png",
     "galleryBanner": {
