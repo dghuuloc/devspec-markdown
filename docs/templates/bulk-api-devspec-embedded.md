@@ -486,6 +486,7 @@ This file is used to test:
 * Mermaid sequence diagram
 * Mermaid class diagram
 * PDF export rendering
+* This is work fine
 
 ### Inline KaTeX Math
 Einstein's formula is $E = mc^2$.
@@ -533,12 +534,11 @@ f(x) &= x^2 + 2x + 1 \\
 \end{aligned}
 $$
 
-## Mermaid Diagram Support
-### Mermaid Flowchart
+## Mermaid Diagram Support for mermaid
 
 ```mermaid
 flowchart TD
-    A[Write Markdown] --> B[Open DevSpec Preview]
+    A[Write Markdown Content] --> B[Open DevSpec Preview extension]
     B --> C{Contains diagrams?}
     C -->|Yes| D[Render Mermaid]
     C -->|No| E[Render normal Markdown]
@@ -547,22 +547,20 @@ flowchart TD
     F --> G[Professional DevSpec PDF]
 ```
 
-### Mermaid Sequence Diagram
-
 ```mermaid
 sequenceDiagram
     participant User
     participant VSCode
     participant DevSpec
-    participant PDF
+    participant PDFFile
 
-    User->>VSCode: Open Markdown file
-    VSCode->>DevSpec: Render preview
-    DevSpec->>DevSpec: Render KaTeX math
-    DevSpec->>DevSpec: Render Mermaid diagrams
-    User->>DevSpec: Export PDF
-    DevSpec->>PDF: Generate final document
-    PDF-->>User: PDF ready
+    User->VSCode: Open Markdown file
+    VSCode->DevSpec: Render preview
+    DevSpec->DevSpec: Render KaTeX math
+    DevSpec->DevSpec: Render Mermaid diagrams
+    User->DevSpec: Export PDF
+    DevSpec->PDF: Generate final document with pdf format
+    PDF-->User: PDF ready
 ```
 
 ### Mermaid Class Diagram

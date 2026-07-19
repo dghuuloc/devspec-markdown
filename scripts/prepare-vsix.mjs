@@ -131,6 +131,12 @@ fs.mkdirSync(stagedCoreDir, { recursive: true });
 copyDirectory(path.join(coreDir, "dist"), path.join(stagedCoreDir, "dist"));
 copyDirectory(path.join(coreDir, "vendor"), path.join(stagedCoreDir, "vendor"));
 
+const stagedCoreDependencies = {
+    ...(corePackageJson.dependencies ?? {})
+};
+
+delete stagedCoreDependencies["mermaid"];
+
 const stagedCorePackageJson = {
     name: corePackageJson.name,
     version: corePackageJson.version,
@@ -138,7 +144,7 @@ const stagedCorePackageJson = {
     type: corePackageJson.type,
     main: corePackageJson.main,
     types: corePackageJson.types,
-    dependencies: corePackageJson.dependencies ?? {}
+    dependencies: stagedCoreDependencies
 };
 
 fs.writeFileSync(

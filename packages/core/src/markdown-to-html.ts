@@ -224,13 +224,22 @@ function createMarkdownRenderer(
 		const info = parseFenceInfo(token.info || "");
 		const language = info.language || sourceLanguage || "text";
 
+		const sourceKind =
+			info.language === "mermaid" || info.language === "mmd"
+				? "mermaid"
+				: info.language === "plantuml" || info.language === "puml"
+					? "plantuml"
+					: "code";
+
+		const sourceAttrs = buildSourceAttributes(token.map, sourceKind);
+
 		if (info.language === "plantuml" || info.language === "puml") {
 			const svg = renderPlantUmlToSvg(token.content, plantuml);
-			return renderPlantUmlFigure(svg, info.title);
+			return renderPlantUmlFigure(svg, info.title, sourceAttrs);
 		}
 
 		if (info.language === "mermaid" || info.language === "mmd") {
-			return renderMermaidFigure(token.content, info.title);
+			return renderMermaidFigure(token.content, info.title, sourceAttrs);
 		}
 
 		const highlighted = highlightCode(token.content, language);
@@ -241,7 +250,7 @@ function createMarkdownRenderer(
 		const codeHtml = wrapCodeLines(highlighted);
 
 		return `
-			<div class="listingblock" data-lang="${escapeHtml(language)}">
+			<div class="listingblock" data-lang="${escapeHtml(language)}" ${sourceAttrs}>
 			${titleHtml}<div class="listing-content"><pre class="highlight"><code class="${codeClass}">${codeHtml}</code></pre></div>
 			</div>
 			`;
@@ -305,18 +314,49 @@ function createMarkdownRenderer(
 	});
 
 	md.core.ruler.push("devspec_source_lines", (state) => {
+
 		for (const token of state.tokens) {
-			if (!token.map || token.nesting !== 1) {
+			if (!token.map) {
 				continue;
 			}
 
-			if (typeof token.attrSet !== "function") {
+			const sourceKind = sourceKindForToken(token.type);
+
+			if (!sourceKind) {
 				continue;
 			}
 
 			token.attrSet("data-source-line", String(token.map[0] + 1));
+			token.attrSet("data-source-end-line", String(token.map[1]));
+			token.attrSet("data-source-kind", sourceKind);
 		}
 	});
+
+	const defaultMathBlockRenderer = md.renderer.rules.math_block;
+
+	if (defaultMathBlockRenderer) {
+		md.renderer.rules.math_block = (
+			tokens,
+			idx,
+			rendererOptions,
+			env,
+			self
+		) => {
+			const token = tokens[idx];
+			const rendered = defaultMathBlockRenderer(
+				tokens,
+				idx,
+				rendererOptions,
+				env,
+				self
+			);
+
+			return `<div class="devspec-math-block" ${buildSourceAttributes(
+				token.map,
+				"math"
+			)}>${rendered}</div>`;
+		};
+	}
 
 	return md;
 }
@@ -387,29 +427,71 @@ function markdownItAlerts(md: MarkdownIt): void {
 }
 
 
-function renderPlantUmlFigure(svgOrHtml: string, caption: string): string {
+function renderPlantUmlFigure(svgOrHtml: string, caption: string, sourceAttrs = ""): string {
 	const body = isSvg(svgOrHtml)
 		? `<img class="plantuml-svg-image" src="${svgToDataUri(svgOrHtml)}" alt="${escapeHtml(caption || "PlantUML diagram")}" />`
 		: svgOrHtml;
 	const captionHtml = caption ? `<figcaption>${escapeHtml(caption)}</figcaption>` : "";
 
 	return `
-	<figure class="plantuml-diagram">
+	<figure class="plantuml-diagram" ${sourceAttrs}>
 		${body}
 		${captionHtml}
 	</figure>
 	`;
 }
 
-function renderMermaidFigure(source: string, caption: string): string {
+function renderMermaidFigure(source: string, caption: string, sourceAttrs = ""): string {
 	const captionHtml = caption ? `<figcaption>${escapeHtml(caption)}</figcaption>` : "";
 
 	return `
-	<figure class="mermaid-diagram">
+	<figure class="mermaid-diagram" ${sourceAttrs}>
 		<pre class="mermaid">${escapeHtml(source)}</pre>
 		${captionHtml}
 	</figure>
 	`;
+}
+
+function buildSourceAttributes(
+	map: [number, number] | null | undefined,
+	kind: string
+): string {
+	if (!map) {
+		return `data-source-kind="${escapeHtml(kind)}"`;
+	}
+
+	return [
+		`data-source-line="${map[0] + 1}"`,
+		`data-source-end-line="${map[1]}"`,
+		`data-source-kind="${escapeHtml(kind)}"`
+	].join(" ");
+}
+
+function sourceKindForToken(tokenType: string): string | undefined {
+	if (tokenType === "heading_open") {
+		return "heading";
+	}
+
+	if (tokenType === "paragraph_open") {
+		return "paragraph";
+	}
+
+	if (tokenType === "table_open") {
+		return "table";
+	}
+
+	if (
+		tokenType === "bullet_list_open" ||
+		tokenType === "ordered_list_open"
+	) {
+		return "list";
+	}
+
+	if (tokenType === "blockquote_open") {
+		return "blockquote";
+	}
+
+	return undefined;
 }
 
 function isSvg(value: string): boolean {

@@ -8,26 +8,6 @@ import {
 	type DevSpecAttributes
 } from "@devspec-markdown/core";
 
-/**
- * Manages a VS Code {@link vscode.WebviewPanel} that renders a live
- * DevSpec Markdown preview for a single Markdown document.
- *
- * At most one `DevSpecPreviewPanel` exists per document URI. The static
- * {@link DevSpecPreviewPanel.panels} map enforces this invariant.
- *
- * ### Update strategy
- * - **Initial render** — the full HTML page (shell + CSS + body) is set
- *   via `webview.html`. A lightweight client-side script is injected to
- *   handle subsequent incremental updates.
- * - **Incremental updates** — only the body HTML fragment is re-rendered
- *   and posted to the webview via `postMessage`. If the body is unchanged,
- *   no message is sent (no-op diff).
- * - **Debouncing** — text-change events are debounced using
- *   `devspecMarkdown.previewDebounceMs` (default 700 ms). Save events use
- *   an 80 ms delay so PlantUML diagrams re-render quickly after save.
- * - **Race-condition guard** — `renderVersion` is incremented before each
- *   async render; stale results are discarded silently.
- */
 export class DevSpecPreviewPanel {
 	private static readonly viewType = "devspecMarkdown.preview";
 	private static readonly panels = new Map<string, DevSpecPreviewPanel>();
@@ -49,24 +29,8 @@ export class DevSpecPreviewPanel {
 
 	private previewZoom = 1;
 	private static activePanel: DevSpecPreviewPanel | undefined;
-	private static readonly minPreviewZoom = 0.5;
-	private static readonly maxPreviewZoom = 3;
 	private static readonly previewZoomStep = 0.1;
 
-	/**
-	 * Creates a new {@link DevSpecPreviewPanel} for `document`, or reveals
-	 * the existing one if it is already open.
-	 *
-	 * The webview is placed in the column beside the active editor
-	 * (`vscode.ViewColumn.Beside`). Local resource roots are set to the
-	 * extension URI and the workspace folder so that images resolve
-	 * correctly via `webview.asWebviewUri`.
-	 *
-	 * @param context - The extension context, used to obtain the extension
-	 *   URI and to create the webview panel.
-	 * @param document - The Markdown document to preview.
-	 * @returns The newly created or existing `DevSpecPreviewPanel` instance.
-	 */
 	public static createOrShow(
 		context: vscode.ExtensionContext,
 		document: vscode.TextDocument
@@ -168,7 +132,7 @@ export class DevSpecPreviewPanel {
 		);
 
 		this.panel.webview.onDidReceiveMessage(
-			(message) => {
+			async (message) => {
 				if (!message || typeof message.type !== "string") {
 					return;
 				}
@@ -198,6 +162,16 @@ export class DevSpecPreviewPanel {
 					return;
 				}
 
+				if (message.type === "refreshPreview") {
+					await this.refresh(true);
+					return;
+				}
+
+				if (message.type === "openSourceFromPreview") {
+					await this.openSourceFromPreview(Number(message.line));
+					return;
+				}
+
 				if (message.type !== "previewDidScroll") {
 					return;
 				}
@@ -220,20 +194,6 @@ export class DevSpecPreviewPanel {
 
 	}
 
-	/**
-	 * Schedules a debounced call to {@link DevSpecPreviewPanel.update}.
-	 *
-	 * Any in-flight timer is cleared before setting a new one:
-	 * - `forcePlantUml = true` (after save): 80 ms delay so diagrams
-	 *   re-render quickly.
-	 * - `forcePlantUml = false` (during typing): delay from
-	 *   `devspecMarkdown.previewDebounceMs` (default 700 ms) to avoid
-	 *   re-rendering on every keystroke.
-	 *
-	 * @param document - The current document state.
-	 * @param forcePlantUml - When `true` the render pass will re-invoke
-	 *   PlantUML even for diagrams that are already cached.
-	 */
 	private scheduleUpdate(document: vscode.TextDocument, forcePlantUml: boolean): void {
 		this.document = document;
 
@@ -250,28 +210,10 @@ export class DevSpecPreviewPanel {
 		}, delayMs);
 	}
 
-	/**
-	 * Performs a full render of `document` and updates the webview.
-	 *
-	 * On the **first call** the complete HTML page is written to
-	 * `webview.html` (initial load). On **subsequent calls** only the body
-	 * HTML fragment is posted via `postMessage`, which the injected client
-	 * script patches into the DOM while preserving the scroll position.
-	 *
-	 * If the rendered `bodyHtml` is identical to the previous render,
-	 * the method returns early without sending any message.
-	 *
-	 * A stale render (when `renderVersion` has advanced since this call
-	 * began) is discarded silently to avoid overwriting a newer result.
-	 *
-	 * @param document - The document to render.
-	 * @param forcePlantUml - When `true`, PlantUML diagrams are always
-	 *   re-rendered even if a cached SVG exists. Set to `true` after a
-	 *   document save; `false` during live typing.
-	 */
 	public async update(
 		document: vscode.TextDocument,
-		forcePlantUml = false
+		forcePlantUml = false,
+		forceBodyUpdate = false
 	): Promise<void> {
 		this.document = document;
 		this.panel.title = `DevSpec Preview: ${path.basename(document.uri.fsPath)}`;
@@ -342,7 +284,7 @@ export class DevSpecPreviewPanel {
 				return;
 			}
 
-			if (result.bodyHtml === this.lastBodyHtml) {
+			if (!forceBodyUpdate && result.bodyHtml === this.lastBodyHtml) {
 				return;
 			}
 
@@ -369,6 +311,65 @@ export class DevSpecPreviewPanel {
 				title: "DevSpec Preview Error"
 			});
 		}
+	}
+
+	public static async refreshActivePreview(): Promise<void> {
+		const panel = DevSpecPreviewPanel.activePanel;
+
+		if (!panel) {
+			vscode.window.showWarningMessage("Open a DevSpec preview first.");
+			return;
+		}
+
+		await panel.refresh(true);
+	}
+
+	private async refresh(forcePlantUml: boolean): Promise<void> {
+		if (this.updateTimer) {
+			clearTimeout(this.updateTimer);
+			this.updateTimer = undefined;
+		}
+
+		await this.panel.webview.postMessage({
+			type: "refreshState",
+			refreshing: true
+		});
+
+		try {
+			const document = await vscode.workspace.openTextDocument(this.document.uri);
+			await this.update(document, forcePlantUml, true);
+		} finally {
+			await this.panel.webview.postMessage({
+				type: "refreshState",
+				refreshing: false
+			});
+		}
+	}
+
+	private async openSourceFromPreview(
+		sourceLine: number
+	): Promise<void> {
+		const document = 
+			await vscode.workspace.openTextDocument(
+				this.document.uri
+			);
+
+		const line = Number.isFinite(sourceLine)
+			? Math.max(0, Math.min(document.lineCount - 1, Math.floor(sourceLine) - 2))
+			: 0;
+
+		const position = new vscode.Position(line, 0);
+
+		const visibleEditor = vscode.window.visibleTextEditors.find(
+			(candidate) => candidate.document.uri.toString() === document.uri.toString()
+		);
+
+		await vscode.window.showTextDocument(document, {
+			viewColumn: visibleEditor?.viewColumn ?? vscode.ViewColumn.One,
+			preserveFocus: false,
+			preview: false,
+			selection: new vscode.Range(position, position)
+		});
 	}
 
 	private syncPreviewToEditor(editor: vscode.TextEditor): void {
@@ -484,14 +485,6 @@ export class DevSpecPreviewPanel {
 		});
 	}
 
-	/**
-	 * Cleans up the panel instance:
-	 * - Removes this panel from the static {@link DevSpecPreviewPanel.panels} map.
-	 * - Cancels any pending debounce timer.
-	 * - Disposes all VS Code {@link vscode.Disposable}s (event listeners).
-	 *
-	 * Called automatically when the webview panel fires `onDidDispose`.
-	 */
 	private dispose(): void {
 		if (DevSpecPreviewPanel.activePanel === this) {
 			DevSpecPreviewPanel.activePanel = undefined;
@@ -509,28 +502,6 @@ export class DevSpecPreviewPanel {
 	}
 }
 
-/**
- * Transforms the full HTML string produced by `renderMarkdownToHtml` into
- * a webview-compatible document.
- *
- * The following modifications are applied:
- * 1. A Content Security Policy `<meta>` tag is prepended to `<head>`,
- *    restricting scripts to those with the generated nonce.
- * 2. The `<article>` element is given the stable `id="devspec-content"`
- *    so the client script can locate it by ID.
- * 3. The preview file-title `<span>` is given the stable
- *    `id="devspec-preview-file-title"` so it can be updated by the client
- *    script.
- * 4. A nonce-gated `<script>` block is appended before `</body>` that
- *    listens for `postMessage` events of type `"update"` and patches the
- *    article `innerHTML` in-place, restoring the scroll position by ratio.
- *
- * @param html - The complete HTML string from the core renderer.
- * @param webview - The webview instance, used for CSP source and nonce.
- * @param initialBodyHtml - The initial body HTML fragment already embedded
- *   in `html`; also written to `lastBodyHtml` for future diff checks.
- * @returns The transformed HTML string ready to assign to `webview.html`.
- */
 function prepareInitialPreviewHtml(
 	html: string,
 	webview: vscode.Webview,
@@ -561,6 +532,20 @@ function prepareInitialPreviewHtml(
 			<button id="devspec-preview-search-close" class="devspec-preview-search-button" type="button" title="Close search">×</button>
 		</div>
 	</div>
+	`;
+
+	const refreshStatusHtml = `
+		<div
+			id="devspec-preview-refresh-status"
+			class="devspec-preview-refresh-status"
+			hidden
+		>
+			<span
+				class="devspec-preview-refresh-spinner"
+			></span>
+
+			<span>Refreshing preview...</span>
+		</div>
 	`;
 
 	let output = html.replace("<head>", `<head>\n  ${csp}`);
@@ -627,36 +612,53 @@ function prepareInitialPreviewHtml(
 			}
 
 			.markdown-body .mermaid-diagram:not(.devspec-diagram-zoomed) {
-			text-align: center !important;
+				width: 100%;
+				max-width: 100%;
+				margin: 1rem auto !important;
+				padding: 8px;
+				text-align: center !important;
+				overflow: hidden;
 			}
 
 			.markdown-body .mermaid-diagram:not(.devspec-diagram-zoomed) pre.mermaid {
-			width: 100% !important;
-			text-align: center !important;
-			white-space: normal !important;
-			overflow: visible !important;
+				width: 100% !important;
+				margin: 0 !important;
+				padding: 0 !important;
+				border: 0 !important;
+				background: transparent !important;
+				text-align: center !important;
+				white-space: normal !important;
+				overflow: visible !important;
 			}
 
 			.markdown-body .mermaid-diagram:not(.devspec-diagram-zoomed) pre.mermaid svg,
 			.markdown-body .mermaid-diagram:not(.devspec-diagram-zoomed) > svg,
 			.markdown-body .mermaid-diagram:not(.devspec-diagram-zoomed) .mermaid-rendered svg {
-			display: block !important;
-			max-width: 100% !important;
-			height: auto !important;
-			margin-left: auto !important;
-			margin-right: auto !important;
+				display: block !important;
+				width: auto !important;
+				height: auto !important;
+				max-width: min(100%, 620px) !important;
+				max-height: 60vh !important;
+				margin-left: auto !important;
+				margin-right: auto !important;
 			}
 
 			.markdown-body .devspec-diagram-zoomed {
-			text-align: center !important;
+				width: 100%;
+				max-width: 100%;
+				overflow: auto !important;
+				text-align: center !important;
 			}
 
 			.markdown-body .devspec-diagram-zoomed img,
 			.markdown-body .devspec-diagram-zoomed svg {
-			max-width: none !important;
-			margin-left: auto !important;
-			margin-right: auto !important;
-			display: block !important;
+				display: block !important;
+				width: auto;
+				height: auto;
+				max-width: none !important;
+				max-height: none !important;
+				margin-left: auto !important;
+				margin-right: auto !important;
 			}
 
 			.markdown-body .plantuml-diagram:hover,
@@ -742,6 +744,56 @@ function prepareInitialPreviewHtml(
 				background: rgba(249, 115, 22, 0.88);
 				color: #111827;
 			}
+
+			.markdown-body [data-source-line] {
+				cursor: default;
+			}
+
+			.markdown-body [data-source-line]:hover {
+				outline: 1px dashed rgba(37, 99, 235, 0.45);
+				outline-offset: 4px;
+			}
+
+			.markdown-body .devspec-preview-edit-target {
+				outline: 2px solid var(--vscode-focusBorder, #2563eb) !important;
+				outline-offset: 4px;
+				background: rgba(37, 99, 235, 0.055);
+			}
+
+			.devspec-preview-refresh-status {
+				position: fixed;
+				top: 6px;
+				right: 10px;
+				z-index: 10001;
+				display: flex;
+				align-items: center;
+				gap: 7px;
+				padding: 5px 9px;
+				border: 1px solid rgba(148, 163, 184, 0.45);
+				border-radius: 7px;
+				background: var(--vscode-editor-background);
+				color: var(--vscode-editor-foreground);
+				box-shadow: 0 6px 16px rgba(15, 23, 42, 0.18);
+				font: 12px var(--vscode-font-family);
+			}
+
+			.devspec-preview-refresh-status[hidden] {
+				display: none !important;
+			}
+
+			.devspec-preview-refresh-spinner {
+				width: 12px;
+				height: 12px;
+				border: 2px solid rgba(148, 163, 184, 0.55);
+				border-top-color: var(--vscode-focusBorder, #2563eb);
+				border-radius: 50%;
+				animation: devspec-preview-spin 0.75s linear infinite;
+			}
+
+			@keyframes devspec-preview-spin {
+				to { transform: rotate(360deg); }
+			}
+
 		</style>
 		</head>`
 	);
@@ -756,8 +808,6 @@ function prepareInitialPreviewHtml(
 		'<span id="devspec-preview-file-title">Live Preview</span>'
 	);
 
-	// The renderer already placed the initial body in the article, but this makes
-	// the shell stable even if the template changes later.
 	output = output.replace(
 		/<article id="devspec-content" class="markdown-body devspec-paper">[\s\S]*?<\/article>/,
 		`<div id="devspec-preview-page-viewport">
@@ -772,7 +822,19 @@ function prepareInitialPreviewHtml(
 	output = output.replace(
 		"</body>",
 		`${searchToolbarHtml}
+		${refreshStatusHtml}
 		<script nonce="${nonce}" src="${mermaidScriptUri}"></script>
+
+		<script nonce="${nonce}">
+			if (window.mermaid) {
+				window.mermaid.initialize({
+					startOnLoad: false
+				});
+
+				window.__devspecMermaidInitialized = true;
+			}
+		</script>
+
 		<script nonce="${nonce}">
 		(function () {
 			const vscode = acquireVsCodeApi();
@@ -786,6 +848,14 @@ function prepareInitialPreviewHtml(
 			const searchPrevButton = document.getElementById("devspec-preview-search-prev");
 			const searchNextButton = document.getElementById("devspec-preview-search-next");
 			const searchCloseButton = document.getElementById("devspec-preview-search-close");
+			const refreshStatus = document.getElementById( "devspec-preview-refresh-status");
+
+			let selectedPreviewElement = null;
+			let hoveredPreviewElement = null;
+			let selectedSourceLine = null;
+
+			let lastPointerClientX = Math.round(window.innerWidth / 2);
+			let lastPointerClientY = Math.round(window.innerHeight / 2);
 
 			let searchQuery = "";
 			let searchMatches = [];
@@ -810,15 +880,33 @@ function prepareInitialPreviewHtml(
 				return Math.min(3, Math.max(0.5, Math.round(numeric * 10) / 10));
 			}
 
+			function updateWebviewState(values) {
+				const currentState = vscode.getState() || {};
+
+				vscode.setState(
+					Object.assign({}, currentState, values)
+				);
+			}
+
 			function saveZoomState() {
-				vscode.setState({
+				updateWebviewState({
 					zoom: zoom,
 					pageZoom: pageZoom
 				});
 			}
 
 			function escapeSearchRegExp(value) {
-				return String(value).replace(new RegExp("[.*+?^" + "$" + "{}()|[\\]\\\\]", "g"), "\\$&");
+				const backslash = String.fromCharCode(92);
+				const specialCharacters = "^$.*+?()[]{}|";
+				let result = "";
+
+				for (const character of String(value)) {
+					result += specialCharacters.includes(character)
+						? backslash + character
+						: character;
+				}
+
+				return result;
 			}
 
 			function openPreviewSearch() {
@@ -1051,6 +1139,211 @@ function prepareInitialPreviewHtml(
 				}
 
 				updatePreviewSearch();
+			}
+
+			function isTypingTarget(target) {
+				return (
+					target instanceof HTMLInputElement ||
+					target instanceof HTMLTextAreaElement ||
+					target instanceof HTMLSelectElement ||
+					(target instanceof HTMLElement && target.isContentEditable)
+				);
+			}
+
+			function findEditablePreviewElement(target) {
+				if (!(target instanceof Element)) {
+					return null;
+				}
+
+				if (target.closest("#devspec-preview-search")) {
+					return null;
+				}
+
+				return target.closest("[data-source-line]");
+			}
+
+			function selectPreviewElement(element) {
+				if (selectedPreviewElement) {
+					selectedPreviewElement.classList.remove("devspec-preview-edit-target");
+				}
+
+				selectedPreviewElement = element;
+				selectedSourceLine = null;
+
+				if (!element) {
+					return;
+				}
+
+				const line = Number(element.getAttribute("data-source-line"));
+
+				if (!Number.isFinite(line)) {
+					return;
+				}
+
+				selectedSourceLine = line;
+				element.classList.add("devspec-preview-edit-target");
+			}
+
+			function restoreSelectedPreviewElement() {
+				if (!content || !Number.isFinite(selectedSourceLine)) {
+					selectedPreviewElement = null;
+					return;
+				}
+
+				const selector = 
+					'[data-source-line="' + 
+					String(selectedSourceLine) + 
+					'"]';
+
+				selectPreviewElement(content.querySelector(selector));
+			}
+
+			function resolveCurrentEditableElement() {
+				if (
+					selectedPreviewElement &&
+					selectedPreviewElement.isConnected
+				) {
+					return selectedPreviewElement;
+				}
+
+				if (
+					hoveredPreviewElement &&
+					hoveredPreviewElement.isConnected
+				) {
+					return hoveredPreviewElement;
+				}
+
+				const pointerTarget = document.elementFromPoint(
+					lastPointerClientX,
+					lastPointerClientY
+				);
+
+				const pointerElement =
+					findEditablePreviewElement(pointerTarget);
+
+				if (pointerElement) {
+					return pointerElement;
+				}
+
+				return findElementForLine(
+					findCurrentSourceLine()
+				);
+			}
+
+			function requestSourceFocusFromPreview() {
+				const element = resolveCurrentEditableElement();
+
+				if (element) {
+					selectPreviewElement(element);
+				}
+
+				const elementLine = element
+					? Number(
+						element.getAttribute("data-source-line")
+					)
+					: NaN;
+
+				const line = Number.isFinite(elementLine)
+					? elementLine
+					: findCurrentSourceLine();
+
+				vscode.postMessage({
+					type: "openSourceFromPreview",
+					line: line
+				});
+			}
+
+			function setRefreshState(refreshing) {
+				if (refreshStatus) {
+					refreshStatus.hidden = !refreshing;
+				}
+			}
+
+			let mermaidInitialized =
+				window.__devspecMermaidInitialized === true;
+
+			let mermaidRenderSequence = 0;
+
+			function initializeMermaid() {
+				if (!window.mermaid) {
+					console.warn(
+						"Mermaid script is not available in the preview webview."
+					);
+					return false;
+				}
+
+				if (!mermaidInitialized) {
+					window.mermaid.initialize({
+						startOnLoad: false
+					});
+
+					mermaidInitialized = true;
+					window.__devspecMermaidInitialized = true;
+				}
+
+				return true;
+			}
+
+			async function renderMermaidDiagrams(sequence) {
+				if (!content || sequence !== mermaidRenderSequence) {
+					return;
+				}
+
+				if (!initializeMermaid()) {
+					return;
+				}
+
+				const nodes = Array.from(
+					content.querySelectorAll("pre.mermaid")
+				);
+
+				if (nodes.length === 0) {
+					return;
+				}
+
+				for (const node of nodes) {
+					node.removeAttribute("data-processed");
+				}
+
+				try {
+					await window.mermaid.run({
+						nodes: nodes,
+						suppressErrors: false
+					});
+				} catch (error) {
+					console.error(
+						"Could not render Mermaid diagram.",
+						error
+					);
+				}
+			}
+
+			function scheduleMermaidRender() {
+				const sequence = ++mermaidRenderSequence;
+
+				window.requestAnimationFrame(function () {
+					if (sequence !== mermaidRenderSequence) {
+						return;
+					}
+
+					void renderMermaidDiagrams(sequence);
+				});
+			
+			}
+
+			function scheduleInitialMermaidRender() {
+				if (document.readyState === "complete") {
+					scheduleMermaidRender();
+					return;
+				}
+
+				window.addEventListener(
+					"load",
+					function () {
+						scheduleMermaidRender();
+					},
+					{ once: true }
+				);
 			}
 
 			function restoreScrollAroundAnchor(anchor, oldValue, newValue) {
@@ -1526,6 +1819,11 @@ function prepareInitialPreviewHtml(
 					return;
 				}
 
+				if (message.type === "refreshState") {
+					setRefreshState(Boolean(message.refreshing));
+					return;
+				}
+
 				if (message.type !== "update" || !content) {
 					return;
 				}
@@ -1535,7 +1833,11 @@ function prepareInitialPreviewHtml(
 
 				content.innerHTML = message.bodyHtml || "";
 				applyZoom(zoom);
+
+				scheduleMermaidRender();
+
 				refreshSearchAfterContentUpdate();
+				restoreSelectedPreviewElement();
 
 				if (fileTitle && message.title) {
 					fileTitle.textContent = message.title;
@@ -1562,6 +1864,50 @@ function prepareInitialPreviewHtml(
 				}, 80);
 			}, { passive: true });
 
+			if (content) {
+				content.tabIndex = 0;
+
+				content.addEventListener(
+					"pointermove",
+					function (event) {
+						lastPointerClientX = event.clientX;
+						lastPointerClientY = event.clientY;
+
+						hoveredPreviewElement =
+							findEditablePreviewElement(event.target);
+					},
+					{ passive: true }
+				);
+
+				content.addEventListener(
+					"pointerleave",
+					function () {
+						hoveredPreviewElement = null;
+					}
+				);
+
+				content.addEventListener(
+					"click",
+					function (event) {
+						lastPointerClientX = event.clientX;
+						lastPointerClientY = event.clientY;
+
+						const editableElement =
+							findEditablePreviewElement(event.target);
+
+						if (editableElement) {
+							selectPreviewElement(
+								editableElement
+							);
+						}
+
+						content.focus({
+							preventScroll: true
+						});
+					}
+				);
+			}
+
 			document.addEventListener("keydown", function (event) {
 				const isCtrlOrMeta = event.ctrlKey || event.metaKey;
 
@@ -1572,9 +1918,39 @@ function prepareInitialPreviewHtml(
 					return;
 				}
 
+				if (isCtrlOrMeta && event.key.toLowerCase() === "r") {
+					event.preventDefault();
+					event.stopPropagation();
+					vscode.postMessage({ type: "refreshPreview" });
+					return;
+				}
+
 				if (event.key === "Escape" && searchBox && !searchBox.hidden) {
 					event.preventDefault();
 					closePreviewSearch();
+					return;
+				}
+
+				if (isTypingTarget(event.target)) {
+					return;
+				}
+
+				const normalizedKey = String(
+					event.key || ""
+				).toLowerCase();
+
+				if (
+					normalizedKey === "i" &&
+					!event.ctrlKey &&
+					!event.metaKey &&
+					!event.altKey
+				) {
+					event.preventDefault();
+					event.stopPropagation();
+
+					requestSourceFocusFromPreview();
+
+					return;
 				}
 			});
 
@@ -1634,6 +2010,8 @@ function prepareInitialPreviewHtml(
 			} else {
 				applyPageZoom(pageZoom);
 			}
+
+			scheduleInitialMermaidRender();
 			
 		}());
 		</script>
@@ -1643,17 +2021,6 @@ function prepareInitialPreviewHtml(
 	return output;
 }
 
-/**
- * Creates a minimal error-display HTML page for the webview.
- *
- * The page still includes the client-side `postMessage` listener so it can
- * be replaced by a successful render without reloading the webview.
- *
- * @param errorBody - An HTML fragment containing the error message,
- *   typically an `<h2>` and a `<pre>` with the stack or message text.
- * @param webview - The webview instance, used for CSP source and nonce.
- * @returns A complete HTML string ready to assign to `webview.html`.
- */
 function createErrorHtml(errorBody: string, webview: vscode.Webview): string {
 	const nonce = createNonce();
 	const csp = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} data:; style-src 'unsafe-inline' ${webview.cspSource}; script-src 'nonce-${nonce}';">`;
@@ -1748,10 +2115,12 @@ function buildDocumentCss(attrs: DevSpecAttributes, documentDir: string): string
 		return DEFAULT_DEVSPEC_CSS;
 	}
 
-	return `${DEFAULT_DEVSPEC_CSS}
+	return `
+		${DEFAULT_DEVSPEC_CSS}
 
-/* Custom stylesheet: ${stylesheetPath} */
-${fs.readFileSync(stylesheetPath, "utf8")}`;
+		/* Custom stylesheet: ${stylesheetPath} */
+		${fs.readFileSync(stylesheetPath, "utf8")}
+	`;
 }
 
 function resolveImageBaseDir(document: vscode.TextDocument, attrs: DevSpecAttributes): string {

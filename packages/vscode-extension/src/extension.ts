@@ -108,6 +108,12 @@ export function activate(context: vscode.ExtensionContext): void {
 	);
 
 	context.subscriptions.push(
+		vscode.commands.registerCommand("devspecMarkdown.preview.refresh", async () => {
+			await DevSpecPreviewPanel.refreshActivePreview();
+		})
+	);
+
+	context.subscriptions.push(
 		vscode.commands.registerCommand("devspecMarkdown.previewZoomIn", () => {
 			DevSpecPreviewPanel.zoomActivePreviewIn();
 		})
@@ -216,6 +222,12 @@ export function activate(context: vscode.ExtensionContext): void {
 							htmlFile: tempHtmlPath,
 							outputFile: targetUri.fsPath,
 							browserPath,
+
+							mermaidScriptPath: path.join(
+								context.extensionPath,
+								"media",
+								"mermaid.min.js"
+							),
 
 							title: rendered.title,
 							fileName: path.basename(document.uri.fsPath),

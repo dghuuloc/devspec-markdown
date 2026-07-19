@@ -13,6 +13,8 @@ export interface ExportPdfOptions {
 	outputFile: string;
 	browserPath: string;
 
+	mermaidScriptPath?: string;
+
 	title?: string;
 	fileName?: string;
 	owner?: string;
@@ -118,7 +120,7 @@ export async function exportHtmlFileToPdf(options: ExportPdfOptions): Promise<st
 			timeout: 60_000
 		});
 
-		await renderMermaidDiagrams(page);
+		await renderMermaidDiagrams(page, options.mermaidScriptPath);
 		await runPagedJs(page);
 
 		fs.mkdirSync(path.dirname(outputFile), { recursive: true });
@@ -178,8 +180,13 @@ export async function exportHtmlFileToPdf(options: ExportPdfOptions): Promise<st
 	return outputFile;
 }
 
-async function renderMermaidDiagrams(page: import("puppeteer-core").Page): Promise<void> {
-	const mermaidScriptPath = resolveMermaidPath();
+async function renderMermaidDiagrams(
+	page: import("puppeteer-core").Page,
+	explicitMermaidScriptPath?: string
+): Promise<void> {
+	const mermaidScriptPath = resolveMermaidPath(
+		explicitMermaidScriptPath
+	);
 
 	if (!mermaidScriptPath) {
 		return;
@@ -353,7 +360,15 @@ async function renderMermaidDiagrams(page: import("puppeteer-core").Page): Promi
 	});
 }
 
-function resolveMermaidPath(): string | undefined {
+function resolveMermaidPath(explicitPath?: string): string | undefined {
+	if (explicitPath) {
+		const resolvedPath = path.resolve(explicitPath);
+
+		if (fs.existsSync(resolvedPath)) {
+			return resolvedPath;
+		}
+	}
+
 	try {
 		return nodeRequire.resolve("mermaid/dist/mermaid.min.js");
 	} catch {
